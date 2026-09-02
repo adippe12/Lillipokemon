@@ -18,7 +18,7 @@ import {
   passesQuickFilter,
   canonicalize,
 } from "@/lib/mons";
-import { MonSprite } from "./mon-sprite";
+import { MonSprite, spriteBubbleBg } from "./mon-sprite";
 import { MonTypeChip } from "./mon-type-chip";
 import {
   Dialog,
@@ -58,7 +58,7 @@ export function MonDetailDialog({ mon, pendingCount, maxSpotted, onOpenChange }:
   return (
     <Dialog open={!!mon} onOpenChange={onOpenChange}>
       {mon && (
-        <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto border-2 bg-popover p-6 sm:max-w-xl">
+        <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-3xl border-2 border-border bg-popover p-6 shadow-[0_24px_60px_rgba(240,107,168,0.22)] sm:max-w-xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{displayName(mon.name)} entry</DialogTitle>
             <DialogDescription>
@@ -90,10 +90,17 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
     <div className="space-y-5">
       {/* header */}
       <div className="flex items-start gap-4">
-        <div className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-xl bg-[#101a1f] shadow-[inset_0_0_24px_#000000cc]">
+        <div
+          className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border"
+          style={{
+            background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
+            borderColor: "rgba(255,255,255,0.9)",
+            boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
+          }}
+        >
           <span
-            className="pointer-events-none absolute inset-0 rounded-xl opacity-60"
-            style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}22, transparent)` }}
+            className="pointer-events-none absolute inset-0 rounded-full opacity-60"
+            style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
             aria-hidden
           />
           {mon.image_path ? (
@@ -108,29 +115,29 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-lcd text-lg text-muted-foreground">{pokedexNumber(mon.pokedex_no)}</span>
-            <h2 className="font-pixel truncate text-base uppercase text-pokedex-yellow">
+            <span className="font-soft text-lg font-bold text-muted-foreground">{pokedexNumber(mon.pokedex_no)}</span>
+            <h2 className="font-display truncate text-xl font-bold text-primary">
               {displayName(mon.name)}
             </h2>
             <MonTypeChip name={mon.name} />
           </div>
-          <div className="flex flex-wrap gap-1.5 font-lcd text-[13px]">
-            <Badge variant="secondary" className="border border-pokedex-cyan/30 bg-pokedex-cyan/10 text-pokedex-cyan">
+          <div className="flex flex-wrap gap-1.5 font-soft text-[13px] font-bold">
+            <Badge variant="secondary" className="rounded-full border border-primary/25 bg-primary/10 text-primary">
               {formatNumber(mon.spotted_count)} spotted
             </Badge>
-            <Badge variant="secondary" className="border-border">
+            <Badge variant="secondary" className="rounded-full border-border">
               found by @{mon.discovered_by}
             </Badge>
-            <Badge variant="secondary" className="border-border">
+            <Badge variant="secondary" className="rounded-full border-border">
               {formatDate(mon.discovered_at)}
             </Badge>
             {pendingCount > 0 && (
-              <Badge className="border border-pokedex-yellow/40 bg-pokedex-yellow/10 text-pokedex-yellow">
+              <Badge className="rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
                 <FlaskConical className="mr-1 h-3 w-3" /> {pendingCount} in review
               </Badge>
             )}
           </div>
-          <p className="font-lcd text-sm text-muted-foreground">
+          <p className="font-soft text-sm font-semibold text-muted-foreground">
             last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
           </p>
         </div>
@@ -141,12 +148,12 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
       {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
 
       {/* description */}
-      <div className="rounded-lg border border-border bg-secondary/60 p-4">
-        <h3 className="font-pixel mb-2 text-[11px] uppercase text-muted-foreground">Dex entry</h3>
+      <div className="rounded-2xl border border-border bg-secondary/70 p-4">
+        <h3 className="font-display mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Story</h3>
         {mon.description ? (
           <blockquote className="space-y-1">
             <p className="text-sm leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
-            <footer className="font-lcd text-xs text-pokedex-cyan">— @{mon.description_by}</footer>
+            <footer className="font-soft text-xs font-bold text-pokedex-cyan">— @{mon.description_by}</footer>
           </blockquote>
         ) : (
           <p className="text-sm italic text-muted-foreground">
@@ -172,11 +179,11 @@ function ProposalSection({
 }) {
   return (
     <Tabs defaultValue="description" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-secondary">
-        <TabsTrigger value="description" className="font-lcd gap-1.5 text-sm">
+      <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
+        <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
           <PenLine className="h-4 w-4" /> Describe it
         </TabsTrigger>
-        <TabsTrigger value="image" className="font-lcd gap-1.5 text-sm">
+        <TabsTrigger value="image" className="font-soft gap-1.5 rounded-full text-sm font-bold">
           <ImageIcon className="h-4 w-4" /> Submit art
         </TabsTrigger>
       </TabsList>
@@ -199,7 +206,7 @@ function NicknameField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor="lp-nick" className="font-lcd text-sm text-muted-foreground">
+      <label htmlFor="lp-nick" className="font-soft text-sm font-bold text-muted-foreground">
         Your name (shown as credit after approval)
       </label>
       <Input
@@ -208,7 +215,7 @@ function NicknameField({
         maxLength={MAX_NICKNAME}
         onChange={(e) => setNickname(e.target.value)}
         placeholder="e.g. chatgoblin"
-        className="bg-secondary/70 font-lcd"
+        className="rounded-full bg-secondary/70 font-soft font-semibold"
       />
     </div>
   );
@@ -268,11 +275,11 @@ function DescriptionForm({
       <div className="space-y-3">
         <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
           <ShieldCheck className="h-4 w-4 text-pokedex-cyan" />
-          <AlertDescription className="font-lcd text-sm">
+          <AlertDescription className="font-soft text-sm">
             Submitted! The channel team reviews every entry before it appears — thanks, researcher.
           </AlertDescription>
         </Alert>
-        <Button variant="secondary" className="font-lcd" onClick={() => setState("idle")}>
+        <Button variant="secondary" className="font-soft rounded-full font-bold" onClick={() => setState("idle")}>
           Propose another
         </Button>
       </div>
@@ -283,7 +290,7 @@ function DescriptionForm({
     <div className="space-y-4">
       <NicknameField nickname={nickname} setNickname={setNickname} />
       <div className="space-y-1.5">
-        <label htmlFor="lp-desc" className="font-lcd text-sm text-muted-foreground">
+        <label htmlFor="lp-desc" className="font-soft text-sm font-bold text-muted-foreground">
           What is {displayName(mon.name)}? (max {MAX_DESCRIPTION} chars)
         </label>
         <Textarea
@@ -293,25 +300,25 @@ function DescriptionForm({
           onChange={(e) => setText(e.target.value)}
           placeholder="A gremlin of pure chaos that only appears when someone drops a combo..."
           rows={4}
-          className="resize-none bg-secondary/70"
+          className="resize-none rounded-2xl bg-secondary/70 font-semibold"
         />
         <div className="flex items-center gap-3">
           <Progress value={(text.length / MAX_DESCRIPTION) * 100} className="h-1.5" />
-          <span className="font-lcd shrink-0 text-xs text-muted-foreground">
+          <span className="font-soft shrink-0 text-xs text-muted-foreground">
             {text.length}/{MAX_DESCRIPTION}
           </span>
         </div>
         {!clean && (
-          <p className="font-lcd text-xs text-destructive">
+          <p className="font-soft text-xs text-destructive">
             That wording will be blocked by the safety filter — please rephrase kindly.
           </p>
         )}
       </div>
-      {error && <p className="font-lcd text-sm text-destructive">{error}</p>}
+      {error && <p className="font-soft text-sm text-destructive">{error}</p>}
       <Button
         onClick={submit}
         disabled={state === "sending" || tooShort || !clean}
-        className="font-pixel w-full text-[11px] uppercase hover:bg-pokedex-dark-red"
+        className="font-display w-full rounded-full text-sm font-bold shadow-[0_6px_18px_rgba(240,107,168,0.35)] hover:bg-pokedex-dark-red"
       >
         {state === "sending" ? (
           <>
@@ -412,11 +419,11 @@ function ImageForm({
       <div className="space-y-3">
         <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
           <ShieldCheck className="h-4 w-4 text-pokedex-cyan" />
-          <AlertDescription className="font-lcd text-sm">
+          <AlertDescription className="font-soft text-sm">
             Artwork uploaded! It goes live after the channel team approves it.
           </AlertDescription>
         </Alert>
-        <Button variant="secondary" className="font-lcd" onClick={() => setState("idle")}>
+        <Button variant="secondary" className="font-soft rounded-full font-bold" onClick={() => setState("idle")}>
           Submit another
         </Button>
       </div>
@@ -427,15 +434,14 @@ function ImageForm({
     <div className="space-y-4">
       <NicknameField nickname={nickname} setNickname={setNickname} />
       <div className="space-y-2">
-        <label className="font-lcd text-sm text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
+        <label className="font-soft text-sm font-bold text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
         {preview ? (
-          <div className="relative flex items-center justify-center rounded-lg border border-border bg-[#101a1f] p-6">
-            { }
-            <img src={preview} alt="Selected artwork preview" className="max-h-48 rounded object-contain" />
+          <div className="relative flex items-center justify-center rounded-2xl border border-border bg-secondary/60 p-6">
+            <img src={preview} alt="Selected artwork preview" className="max-h-48 rounded-lg object-contain" />
             <button
               aria-label="Remove selected image"
               onClick={() => pick(null)}
-              className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 hover:bg-black/80"
+              className="absolute right-2 top-2 rounded-full bg-foreground/20 p-1.5 text-foreground transition hover:bg-foreground/35"
             >
               <X className="h-4 w-4" />
             </button>
@@ -444,10 +450,10 @@ function ImageForm({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-secondary/40 p-8 transition hover:border-pokedex-cyan/50 hover:bg-secondary/70"
+            className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-secondary/50 p-8 transition hover:border-primary/50 hover:bg-secondary"
           >
-            <UploadCloud className="h-8 w-8 text-pokedex-cyan" />
-            <span className="font-lcd text-sm text-muted-foreground">Click to choose an image</span>
+            <UploadCloud className="h-8 w-8 text-primary" />
+            <span className="font-soft text-sm font-semibold text-muted-foreground">Click to choose an image</span>
           </button>
         )}
         <input
@@ -458,11 +464,11 @@ function ImageForm({
           onChange={(e) => pick(e.target.files?.[0] ?? null)}
         />
       </div>
-      {error && <p className="font-lcd text-sm text-destructive">{error}</p>}
+      {error && <p className="font-soft text-sm text-destructive">{error}</p>}
       <Button
         onClick={submit}
         disabled={state === "sending" || !file}
-        className="font-pixel w-full text-[11px] uppercase hover:bg-pokedex-dark-red"
+        className="font-display w-full rounded-full text-sm font-bold shadow-[0_6px_18px_rgba(240,107,168,0.35)] hover:bg-pokedex-dark-red"
       >
         {state === "sending" ? (
           <>
@@ -520,7 +526,7 @@ function ShareButton({ mon }: { mon: Mon }) {
       variant="secondary"
       size="sm"
       onClick={copy}
-      className="font-lcd shrink-0 gap-1.5 border border-border px-2.5"
+      className="font-soft shrink-0 gap-1.5 rounded-full border border-border px-3 font-bold"
       aria-label={`Copy share link for ${displayName(mon.name)}`}
     >
       {copied ? (
@@ -543,16 +549,16 @@ function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: n
   const pct = Math.max(4, Math.round((spotted / maxSpotted) * 100));
   const isTop = spotted >= maxSpotted;
   return (
-    <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
-      <div className="mb-1.5 flex items-center justify-between font-lcd text-xs">
+    <div className="rounded-2xl border border-border bg-secondary/60 px-4 py-3">
+      <div className="mb-1.5 flex items-center justify-between font-soft text-xs font-bold">
         <span className="text-muted-foreground">DEX POPULARITY</span>
         <span className={isTop ? "text-pokedex-yellow" : "text-muted-foreground"}>
           {isTop ? "top species!" : `${formatNumber(maxSpotted)} top record`}
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-black/40">
+      <div className="h-2.5 overflow-hidden rounded-full bg-white shadow-[inset_0_1px_3px_rgba(240,107,168,0.15)]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-pokedex-cyan to-pokedex-yellow transition-[width] duration-700"
+          className="h-full rounded-full bg-gradient-to-r from-primary to-[#b9a7f2] transition-[width] duration-700"
           style={{ width: `${pct}%` }}
           role="meter"
           aria-valuenow={spotted}

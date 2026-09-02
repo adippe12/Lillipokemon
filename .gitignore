@@ -31,3 +31,4 @@ worklog.md
 components.json
 .env
 *.tsbuildinfo
+tool-results/

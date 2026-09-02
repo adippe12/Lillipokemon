@@ -1,41 +1,36 @@
 import type { Metadata, Viewport } from "next";
-import { Press_Start_2P, VT323, Inter } from "next/font/google";
+import { Baloo_2, Nunito } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-const pressStart = Press_Start_2P({
-  variable: "--font-pixel",
+const baloo = Baloo_2({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["500", "600", "700", "800"],
 });
 
-const vt323 = VT323({
-  variable: "--font-lcd",
+const nunito = Nunito({
+  variable: "--font-soft",
   subsets: ["latin"],
-  weight: "400",
-});
-
-const inter = Inter({
-  variable: "--font-sans-body",
-  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: "LILLIPEDEX — Live Pokedex for lillimon_",
   description:
-    "A live Pokedex that watches Twitch chat of lillimon_. Every 'sillymon', 'eepymon' or 'sleepymon' in chat gets catalogued. Propose descriptions and artwork, reviewed by the channel team.",
+    "A sweet live Pokedex that watches Twitch chat of lillimon_. Every 'sillymon', 'eepymon' or any word ending in 'mon' becomes a new friend. Propose descriptions and artwork, reviewed by the channel team.",
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
     title: "LILLIPEDEX",
-    description: "Live creature discovery from Twitch chat — every mention is catalogued.",
+    description: "Live creature discovery from Twitch chat — every mention becomes a new friend.",
     type: "website",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101019",
+  themeColor: "#fff8f3",
 };
 
 export default function RootLayout({
@@ -46,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${pressStart.variable} ${vt323.variable} ${inter.variable} antialiased bg-background text-foreground font-body`}
+        className={`${baloo.variable} ${nunito.variable} antialiased bg-background text-foreground font-body`}
       >
         {children}
         <Toaster />

@@ -191,16 +191,16 @@ export function isFreshDiscovery(iso: string, ms = 120_000): boolean {
 export type MonType = { key: string; label: string; color: string };
 
 export const MON_TYPES: MonType[] = [
-  { key: "ember", label: "Ember", color: "#ff7a45" },
-  { key: "tide", label: "Tide", color: "#4fa8ff" },
-  { key: "leaf", label: "Leaf", color: "#7ed957" },
-  { key: "spark", label: "Spark", color: "#ffd23f" },
-  { key: "frost", label: "Frost", color: "#7fe6e0" },
-  { key: "shade", label: "Shade", color: "#a78bfa" },
-  { key: "pixie", label: "Pixie", color: "#f67ac1" },
-  { key: "stone", label: "Stone", color: "#c2bbad" },
-  { key: "breeze", label: "Breeze", color: "#66d9c2" },
-  { key: "radiant", label: "Radiant", color: "#ffab4f" },
+  { key: "ember", label: "Ember", color: "#e86a4a" },
+  { key: "tide", label: "Tide", color: "#4a9bd8" },
+  { key: "leaf", label: "Leaf", color: "#58b368" },
+  { key: "spark", label: "Spark", color: "#dd8a2e" },
+  { key: "frost", label: "Frost", color: "#45b5c4" },
+  { key: "shade", label: "Shade", color: "#9061d9" },
+  { key: "pixie", label: "Pixie", color: "#e0559f" },
+  { key: "stone", label: "Stone", color: "#9a8f85" },
+  { key: "breeze", label: "Breeze", color: "#3aa88f" },
+  { key: "radiant", label: "Radiant", color: "#e08a3c" },
 ];
 
 /** FNV-1a string hash (same scheme as the sprite generator). */

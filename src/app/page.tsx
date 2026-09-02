@@ -14,7 +14,7 @@ import { useTwitchChat, type ChatMessage } from "@/lib/use-twitch-chat";
 import { ListenerStatus } from "@/components/listener-status";
 import { MonCard } from "@/components/mon-card";
 import { MonDetailDialog } from "@/components/mon-detail";
-import { MonSprite } from "@/components/mon-sprite";
+import { MonSprite, spriteBubbleBg } from "@/components/mon-sprite";
 import { LiveWire, type FeedEvent } from "@/components/live-wire";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  Sparkles,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -50,11 +51,11 @@ function blip(kind: "new" | "spot") {
     notes.forEach((f, i) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.type = "square";
+      o.type = "sine";
       o.frequency.value = f;
       g.gain.setValueAtTime(0.0001, now + i * 0.09);
-      g.gain.exponentialRampToValueAtTime(0.035, now + i * 0.09 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.14);
+      g.gain.exponentialRampToValueAtTime(0.03, now + i * 0.09 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.16);
       o.connect(g).connect(ctx.destination);
       o.start(now + i * 0.09);
       o.stop(now + i * 0.09 + 0.16);
@@ -73,8 +74,8 @@ function subscribeMute(listener: () => void) {
 }
 
 function celebrate() {
-  const colors = ["#e3350d", "#ffcb05", "#4fd8e8", "#fff8e7", "#8bd450"];
-  confetti({ particleCount: 90, spread: 75, origin: { y: 0.7 }, colors, disableForReducedMotion: true });
+  const colors = ["#f06ba8", "#b9a7f2", "#7fd8be", "#ffd97d", "#8ecdf7"];
+  confetti({ particleCount: 90, spread: 75, origin: { y: 0.7 }, colors, disableForReducedMotion: true, scalar: 0.9 });
   setTimeout(
     () => confetti({ particleCount: 60, spread: 100, origin: { x: 0.15, y: 0.6 }, colors, disableForReducedMotion: true }),
     220
@@ -148,10 +149,10 @@ function useCountUp(target: number, duration = 700): number {
 
 type SortKey = "dex" | "spotted" | "recent" | "newest";
 const SORTS: { key: SortKey; label: string }[] = [
-  { key: "dex", label: "DEX #" },
-  { key: "spotted", label: "MOST SPOTTED" },
-  { key: "recent", label: "RECENT" },
-  { key: "newest", label: "NEWEST" },
+  { key: "dex", label: "Dex #" },
+  { key: "spotted", label: "Most spotted" },
+  { key: "recent", label: "Recent" },
+  { key: "newest", label: "Newest" },
 ];
 
 const SPOT_TOAST_COOLDOWN = 10_000;
@@ -481,7 +482,7 @@ export default function PokedexPage() {
   const typed = useTypewriter(EXAMPLE_WORDS);
 
   const statusLabel =
-    status === "live" ? `LIVE · #${TWITCH_CHANNEL}` : status === "connecting" ? "CONNECTING…" : status === "reconnecting" ? "RECONNECTING…" : "OFFLINE";
+    status === "live" ? `LIVE · #${TWITCH_CHANNEL}` : status === "connecting" ? "connecting…" : status === "reconnecting" ? "reconnecting…" : "offline";
 
   const toastMon = useMemo(
     () => (toast ? mons.find((m) => m.name === toast.name) ?? null : null),
@@ -491,19 +492,19 @@ export default function PokedexPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* ---------- header ---------- */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 shadow-[0_2px_18px_rgba(240,107,168,0.07)] backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <a
             href="/"
-            className="flex items-center gap-3 rounded-md transition hover:opacity-90"
+            className="flex items-center gap-2.5 rounded-full transition hover:opacity-90"
             aria-label="LILLIPEDEX home"
           >
-            <div className="flex items-center gap-1.5" aria-hidden>
-              <span className="led led-blue" />
-              <span className="led led-red" />
-              <span className="led led-yellow" />
-            </div>
-            <h1 className="font-pixel text-sm text-foreground sm:text-base">
+            <span className="flex items-end gap-1" aria-hidden>
+              <Heart className="h-4 w-4 text-primary" fill="currentColor" />
+              <Heart className="h-3 w-3 text-[#b9a7f2]" fill="currentColor" />
+              <Heart className="h-2.5 w-2.5 text-[#7fd8be]" fill="currentColor" />
+            </span>
+            <h1 className="font-display text-lg font-extrabold tracking-wide text-foreground sm:text-xl">
               LILLI<span className="text-primary">PEDEX</span>
             </h1>
           </a>
@@ -513,19 +514,19 @@ export default function PokedexPage() {
               onClick={toggleMute}
               aria-label={muted ? "Unmute discovery sounds" : "Mute discovery sounds"}
               aria-pressed={muted}
-              className="rounded-md border border-border p-2 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
             >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-pokedex-cyan" />}
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-primary" />}
             </button>
             <a
               href={`https://twitch.tv/${TWITCH_CHANNEL}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 transition hover:border-primary/50"
+              className="flex items-center gap-2 rounded-full border border-primary/25 bg-card px-3 py-1.5 shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/50"
             >
               <span className={`pulse-dot ${status === "live" ? "" : "err"}`} />
-              <span className="font-lcd hidden text-sm text-foreground sm:inline">{statusLabel}</span>
-              <span className="font-lcd text-sm text-foreground sm:hidden">LIVE</span>
+              <span className="font-soft hidden text-sm font-bold text-foreground sm:inline">{statusLabel}</span>
+              <span className="font-soft text-sm font-bold text-foreground sm:hidden">LIVE</span>
             </a>
           </div>
         </div>
@@ -536,14 +537,14 @@ export default function PokedexPage() {
         {setupError && (
           <Alert variant="destructive" className="mb-6">
             <Activity className="h-4 w-4" />
-            <AlertTitle className="font-lcd">Connection issue</AlertTitle>
-            <AlertDescription className="font-lcd text-sm">
+            <AlertTitle className="font-soft font-bold">Oh no, a connection hiccup</AlertTitle>
+            <AlertDescription className="font-soft text-sm">
               {setupError}
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => void retryConnection()}
-                className="font-lcd ml-0 mt-2 flex items-center gap-1.5 sm:ml-3 sm:mt-0"
+                className="font-soft ml-0 mt-2 flex items-center gap-1.5 sm:ml-3 sm:mt-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Retry
               </Button>
@@ -553,53 +554,59 @@ export default function PokedexPage() {
 
         {/* hero + live wire */}
         <section className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="crt-screen relative rounded-2xl px-5 py-8 sm:px-8 sm:py-10">
-            <div className="radar-line" />
+          <div className="cloud-panel relative rounded-3xl px-5 py-8 sm:px-8 sm:py-10">
+            {/* floating pastel bubbles */}
+            <span className="bubble bubble-pink bob" style={{ width: 92, height: 92, top: -26, right: 70 }} aria-hidden />
+            <span className="bubble bubble-lavender bob" style={{ width: 54, height: 54, top: 44, right: -12, animationDelay: "1.2s" }} aria-hidden />
+            <span className="bubble bubble-mint bob" style={{ width: 42, height: 42, bottom: 30, left: -12, animationDelay: "2s" }} aria-hidden />
+            <span className="bubble bubble-butter bob" style={{ width: 30, height: 30, top: 14, left: 150, animationDelay: "0.6s" }} aria-hidden />
+            <span className="bubble bubble-sky bob" style={{ width: 48, height: 48, bottom: -14, right: 210, animationDelay: "2.6s" }} aria-hidden />
             <div className="relative z-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
               <div className="space-y-3">
-                <p className="font-lcd text-sm text-pokedex-cyan">
-                  <span className="lcd-text">SCANNING</span> twitch.tv/{TWITCH_CHANNEL} chat…
+                <p className="font-soft text-sm font-bold text-primary">
+                  <Sparkles className="mr-1 inline h-4 w-4" aria-hidden />
+                  listening to twitch.tv/{TWITCH_CHANNEL} chat…
                 </p>
-                <h2 className="font-pixel max-w-xl text-lg leading-relaxed text-foreground sm:text-xl">
-                  EVERY <span className="text-primary">MON</span> SHOUTED IN CHAT
+                <h2 className="font-display max-w-xl text-xl font-extrabold leading-snug text-foreground sm:text-2xl">
+                  Every little <span className="text-primary">mon</span> typed in chat
                   <br />
-                  GETS CATALOGUED HERE
+                  becomes a new friend here
                 </h2>
-                <p className="font-lcd text-base text-muted-foreground" aria-hidden>
-                  try: <span className="text-pokedex-yellow">{typed}</span>
+                <p className="font-soft text-base font-semibold text-muted-foreground" aria-hidden>
+                  try: <span className="font-bold text-primary">{typed}</span>
                   <span className="caret" />
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Badge className="border border-pokedex-cyan/50 bg-pokedex-cyan/15 font-lcd text-[13px] text-pokedex-cyan">
-                    ANY word ending in &ldquo;mon&rdquo;
+                  <Badge className="rounded-full border border-primary/40 bg-primary/15 font-soft text-[13px] font-bold text-primary">
+                    any word ending in &ldquo;mon&rdquo;
                   </Badge>
                   {triggers.slice(0, 5).map((t) => (
                     <Badge
                       key={t}
                       variant="secondary"
-                      className="border border-pokedex-yellow/40 bg-pokedex-yellow/10 font-lcd text-[13px] text-pokedex-yellow"
+                      className="rounded-full border border-[#b9a7f2]/50 bg-[#b9a7f2]/15 font-soft text-[13px] font-bold text-[#8a6fd1]"
                     >
                       &ldquo;{t}&rdquo;
                     </Badge>
                   ))}
                   {triggers.length > 5 && (
-                    <span className="font-lcd text-xs text-muted-foreground">+{triggers.length - 5}</span>
+                    <span className="font-soft text-xs font-bold text-muted-foreground">+{triggers.length - 5}</span>
                   )}
                 </div>
               </div>
               <div className="grid w-full grid-cols-3 gap-3 sm:w-auto">
-                <Stat label="SPECIES" value={loading ? null : stats.species} />
-                <Stat label="SPOTTED" value={loading ? null : stats.spots} />
-                <Stat label="IN REVIEW" value={loading ? null : stats.inReview} />
+                <Stat label="friends" value={loading ? null : stats.species} />
+                <Stat label="sightings" value={loading ? null : stats.spots} />
+                <Stat label="in review" value={loading ? null : stats.inReview} />
               </div>
             </div>
             {latest && (
-              <div className="relative z-10 mt-6 flex flex-wrap items-center gap-2 font-lcd text-sm text-muted-foreground">
-                <Radio className="h-4 w-4 text-pokedex-cyan" />
+              <div className="relative z-10 mt-6 flex flex-wrap items-center gap-2 font-soft text-sm font-semibold text-muted-foreground">
+                <Radio className="h-4 w-4 text-primary" />
                 latest activity:
-                <span className="text-foreground">{displayName(latest.name)}</span>
+                <span className="font-bold text-foreground">{displayName(latest.name)}</span>
                 {latest.last_spotted_by && <span>spotted by @{latest.last_spotted_by}</span>}
-                <span className="text-pokedex-cyan">· {formatNumber(scanned)} chat messages scanned by you</span>
+                <span className="font-bold text-pokedex-cyan">· {formatNumber(scanned)} chat messages scanned by you</span>
               </div>
             )}
           </div>
@@ -615,9 +622,12 @@ export default function PokedexPage() {
                 if (toastMon) openMon(toastMon.id);
                 setToast(null);
               }}
-              className="pixel-card relative flex items-center gap-3 overflow-hidden rounded-xl bg-popover px-5 py-4 pr-7 text-left transition hover:border-pokedex-cyan/40"
+              className="candy-card relative flex items-center gap-3 overflow-hidden rounded-2xl bg-popover px-5 py-4 pr-7 text-left"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#101a1f] shadow-[inset_0_0_12px_#000000aa]">
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.15)]"
+                style={{ background: toastMon ? spriteBubbleBg(toastMon.name, toastMon.id.slice(0, 8)) : "#fdeff5" }}
+              >
                 {toastMon ? (
                   toastMon.image_path ? (
                     <img
@@ -634,20 +644,20 @@ export default function PokedexPage() {
               </div>
               <div>
                 {toast.isNew ? (
-                  <p className="font-pixel text-[11px] text-pokedex-yellow">NEW SPECIES DISCOVERED!</p>
+                  <p className="font-display text-xs font-extrabold text-primary">NEW FRIEND DISCOVERED!</p>
                 ) : (
-                  <p className="font-pixel text-[11px] text-pokedex-cyan">SPOTTED!</p>
+                  <p className="font-display text-xs font-extrabold text-pokedex-cyan">SPOTTED AGAIN!</p>
                 )}
-                <p className="font-lcd text-sm text-foreground">
+                <p className="font-soft text-sm font-bold text-foreground">
                   {displayName(toast.name)}{" "}
                   {toast.isNew ? `— found by @${toast.by}` : `— spotted by @${toast.by}`}
                 </p>
-                <p className="font-lcd text-[11px] text-muted-foreground">click to open the entry</p>
+                <p className="font-soft text-[11px] font-semibold text-muted-foreground">tap to open the entry</p>
               </div>
               <span
                 key={toast.ts}
                 aria-hidden
-                className="toast-timer-bar absolute bottom-0 left-0 h-[3px] bg-pokedex-cyan/50"
+                className="toast-timer-bar absolute bottom-0 left-0 h-[3px] bg-primary/50"
               />
             </button>
           </div>
@@ -656,12 +666,12 @@ export default function PokedexPage() {
         {/* grid */}
         <section aria-label="Pokedex entries" className="mb-12">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-            <h2 className="font-pixel mb-0 text-xs uppercase text-muted-foreground">
+            <h2 className="font-display mb-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">
               <BookOpen className="mr-2 inline h-4 w-4 text-primary" />
-              Dex entries — {stats.species}
+              Dex friends — {stats.species}
             </h2>
             {query.trim() !== "" && (
-              <span className="font-lcd text-xs text-muted-foreground">
+              <span className="font-soft text-xs font-bold text-muted-foreground">
                 showing {visibleMons.length} of {mons.length}
               </span>
             )}
@@ -671,7 +681,7 @@ export default function PokedexPage() {
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="relative w-full md:max-w-xs">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                   aria-hidden
                 />
                 <Input
@@ -679,11 +689,11 @@ export default function PokedexPage() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search species or discoverer…"
                   aria-label="Search species or discoverer"
-                  className="font-lcd bg-secondary/60 pl-9"
+                  className="font-soft rounded-full border-border bg-card pl-9 font-semibold shadow-[0_2px_8px_rgba(240,107,168,0.06)]"
                 />
               </div>
               <div
-                className="flex items-center gap-1 self-start overflow-x-auto rounded-lg border border-border bg-secondary/50 p-1"
+                className="flex items-center gap-1 self-start overflow-x-auto rounded-full border border-border bg-card/80 p-1 shadow-[0_2px_8px_rgba(240,107,168,0.06)]"
                 role="group"
                 aria-label="Sort entries"
               >
@@ -692,10 +702,10 @@ export default function PokedexPage() {
                     key={s.key}
                     onClick={() => setSort(s.key)}
                     aria-pressed={sort === s.key}
-                    className={`font-lcd whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition ${
+                    className={`font-soft whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-bold transition ${
                       sort === s.key
-                        ? "border-primary/40 bg-card text-foreground shadow-sm"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-primary-foreground shadow-[0_3px_10px_rgba(240,107,168,0.35)]"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {s.label}
@@ -708,37 +718,40 @@ export default function PokedexPage() {
           {loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-64 rounded-xl bg-secondary" />
+                <Skeleton key={i} className="h-64 rounded-3xl bg-secondary" />
               ))}
             </div>
           ) : mons.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-12 text-center">
-              <div className="mb-6 flex items-end justify-center gap-5" aria-hidden>
+            <div className="rounded-3xl border-2 border-dashed border-border bg-white/60 p-12 text-center">
+              <div className="mb-6 flex items-end justify-center gap-6" aria-hidden>
                 {EXAMPLE_WORDS.slice(0, 3).map((w, i) => (
                   <div
                     key={w}
                     className="floaty flex flex-col items-center gap-2"
-                    style={{ animationDelay: `${i * 300}ms`, opacity: 0.9 }}
+                    style={{ animationDelay: `${i * 300}ms` }}
                   >
-                    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#101a1f] shadow-[inset_0_0_14px_#000000aa]">
+                    <div
+                      className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white shadow-[0_6px_14px_rgba(240,107,168,0.14)]"
+                      style={{ background: spriteBubbleBg(w, w) }}
+                    >
                       <MonSprite name={w} seed={w} size={52} />
                     </div>
-                    <span className="font-lcd text-xs text-muted-foreground">{w}</span>
+                    <span className="font-soft text-xs font-bold text-muted-foreground">{w}</span>
                   </div>
                 ))}
               </div>
-              <p className="font-pixel text-xs text-muted-foreground">NO SPECIES YET</p>
-              <p className="font-lcd mt-2 text-base text-muted-foreground">
-                Type <span className="text-pokedex-yellow">ANY word ending in &ldquo;mon&rdquo;</span> in{" "}
+              <p className="font-display text-base font-bold text-foreground">No friends yet…</p>
+              <p className="font-soft mt-2 text-base font-semibold text-muted-foreground">
+                Type <span className="font-bold text-primary">any word ending in &ldquo;mon&rdquo;</span> in{" "}
                 {TWITCH_CHANNEL}&apos;s chat — blobmon, gutmon, whatevermon!
               </p>
             </div>
           ) : visibleMons.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-10 text-center">
-              <p className="font-lcd text-base text-muted-foreground">
-                No species match <span className="text-pokedex-yellow">&ldquo;{query.trim()}&rdquo;</span>
+            <div className="rounded-3xl border-2 border-dashed border-border bg-white/60 p-10 text-center">
+              <p className="font-soft text-base font-semibold text-muted-foreground">
+                No species match <span className="font-bold text-primary">&ldquo;{query.trim()}&rdquo;</span>
               </p>
-              <Button variant="secondary" className="font-lcd mt-3" onClick={() => setQuery("")}>
+              <Button variant="secondary" className="font-soft mt-3 rounded-full font-bold" onClick={() => setQuery("")}>
                 Clear search
               </Button>
             </div>
@@ -760,41 +773,41 @@ export default function PokedexPage() {
         {/* how it works + safety */}
         <section className="grid gap-4 sm:grid-cols-3">
           <InfoCard
-            icon={<Radio className="h-5 w-5 text-pokedex-cyan" />}
-            title="LIVE LISTENING"
+            icon={<Radio className="h-4.5 w-4.5 text-primary" />}
+            title="Always listening"
             body={`A 24/7 cloud listener watches #${TWITCH_CHANNEL}'s chat even when nobody has this site open. ANY word ending in "mon" — like "sillymon_" or a brand-new "blobmon" — becomes a species and its spotted counter grows. Opening this page adds a second pair of eyes, with live celebrations.`}
           />
           <InfoCard
-            icon={<FlaskConical className="h-5 w-5 text-pokedex-yellow" />}
-            title="COMMUNITY RESEARCH"
+            icon={<FlaskConical className="h-4.5 w-4.5 text-pokedex-yellow" />}
+            title="Community love"
             body="Open any entry and propose a description or artwork. Give yourself a nickname for credit — it appears on the entry once approved."
           />
           <InfoCard
-            icon={<ShieldCheck className="h-5 w-5 text-primary" />}
-            title="SAFE BY DESIGN"
+            icon={<ShieldCheck className="h-4.5 w-4.5 text-pokedex-cyan" />}
+            title="Safe & sound"
             body="Submissions pass a word filter and land in a review queue. Nothing is published until the channel team approves it. Images are size/type-checked and stored privately until approved."
           />
         </section>
       </main>
 
       {/* ---------- footer ---------- */}
-      <footer className="mt-auto border-t border-border bg-secondary/40">
+      <footer className="mt-auto border-t border-border/70 bg-white/60">
         <div className="mx-auto w-full max-w-6xl px-4 py-8">
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
             <div className="space-y-2">
-              <p className="font-pixel text-[11px] text-foreground">
+              <p className="font-display text-sm font-extrabold text-foreground">
                 LILLI<span className="text-primary">PEDEX</span> — made with{" "}
-                <Heart className="inline h-3 w-3 text-primary" fill="currentColor" /> for the lillimon_ community
+                <Heart className="inline h-3.5 w-3.5 text-primary" fill="currentColor" /> for the lillimon_ community
               </p>
-              <p className="font-lcd text-sm text-muted-foreground">
+              <p className="font-soft text-sm font-semibold text-muted-foreground">
                 A living encyclopedia the whole chat builds together — one shout at a time.
               </p>
             </div>
-            <nav aria-label="Links" className="font-lcd grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
-              <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href={`https://twitch.tv/${TWITCH_CHANNEL}`} target="_blank" rel="noopener noreferrer">
+            <nav aria-label="Links" className="font-soft grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm font-bold">
+              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href={`https://twitch.tv/${TWITCH_CHANNEL}`} target="_blank" rel="noopener noreferrer">
                 Twitch channel <ExternalLink className="h-3 w-3" />
               </a>
-              <Button asChild variant="ghost" className="h-auto justify-start p-0 font-lcd text-sm text-muted-foreground hover:bg-transparent hover:text-foreground">
+              <Button asChild variant="ghost" className="h-auto justify-start p-0 font-soft text-sm font-bold text-muted-foreground hover:bg-transparent hover:text-primary">
                 <a href="/admin/" className="flex items-center gap-1.5">
                   Team login <ExternalLink className="h-3 w-3" />
                 </a>
@@ -819,21 +832,21 @@ export default function PokedexPage() {
 function Stat({ label, value }: { label: string; value: number | null }) {
   const v = useCountUp(value ?? 0);
   return (
-    <div className="rounded-lg border border-pokedex-cyan/25 bg-black/40 px-4 py-3 text-center shadow-[inset_0_0_12px_#000000aa]">
-      <p className="font-pixel text-sm text-pokedex-cyan sm:text-base">
+    <div className="rounded-2xl border border-border bg-white/90 px-4 py-3 text-center shadow-[0_4px_14px_rgba(240,107,168,0.10)]">
+      <p className="font-display text-xl font-extrabold text-primary sm:text-2xl">
         {value === null ? "…" : formatNumber(v)}
       </p>
-      <p className="font-lcd mt-1 text-xs text-muted-foreground">{label}</p>
+      <p className="font-soft mt-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
     </div>
   );
 }
 
 function InfoCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 transition duration-200 hover:-translate-y-0.5 hover:border-primary/30">
-      <div className="mb-3 flex items-center gap-2">
-        {icon}
-        <h3 className="font-pixel text-[11px] text-foreground">{title}</h3>
+    <div className="candy-card p-6">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary">{icon}</span>
+        <h3 className="font-display text-sm font-bold text-foreground">{title}</h3>
       </div>
       <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
     </div>

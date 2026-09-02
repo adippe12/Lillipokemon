@@ -6,11 +6,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans-body);
-  --font-mono: var(--font-lcd);
-  --font-pixel: var(--font-pixel);
-  --font-lcd: var(--font-lcd);
-  --font-body: var(--font-sans-body);
+  --font-sans: var(--font-soft);
+  --font-mono: var(--font-soft);
+  --font-display: var(--font-display);
+  --font-soft: var(--font-soft);
+  --font-body: var(--font-soft);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,66 +51,72 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * LILLIPEDEX "Candy Cloud" theme — light, soft & sweet.
+ * Cream canvas, candy pink primary, lavender/mint/butter accents,
+ * chunky rounded corners and sugar-puff shadows everywhere.
+ */
 :root {
-  --radius: 0.75rem;
-  --pokedex-red: #e3350d;
-  --pokedex-dark-red: #a91e0b;
-  --pokedex-yellow: #ffcb05;
-  --pokedex-cyan: #4fd8e8;
-  --pokedex-cream: #fff8e7;
+  --radius: 1.25rem;
+  --pokedex-red: #f06ba8;        /* candy pink (primary accent) */
+  --pokedex-dark-red: #d5518d;   /* deeper candy (hover) */
+  --pokedex-yellow: #dd8a2e;     /* warm honey (readable on cream) */
+  --pokedex-cyan: #4a9bd8;       /* soft sky (readable on cream) */
+  --pokedex-cream: #fff8f3;
 
-  --background: #0e0e16;
-  --foreground: #f2ede2;
-  --card: #16162299;
-  --card-foreground: #f2ede2;
-  --popover: #171724;
-  --popover-foreground: #f2ede2;
-  --primary: #e3350d;
-  --primary-foreground: #fff4ec;
-  --secondary: #23233499;
-  --secondary-foreground: #f2ede2;
-  --muted: #1d1d2c;
-  --muted-foreground: #9a97a8;
-  --accent: #2a2a3f;
-  --accent-foreground: #ffcb05;
+  --background: #fff8f3;
+  --foreground: #6d5a66;
+  --card: #ffffff;
+  --card-foreground: #6d5a66;
+  --popover: #ffffff;
+  --popover-foreground: #6d5a66;
+  --primary: #f06ba8;
+  --primary-foreground: #ffffff;
+  --secondary: #fdeff5;
+  --secondary-foreground: #6d5a66;
+  --muted: #f9eef2;
+  --muted-foreground: #a892a0;
+  --accent: #f3edff;
+  --accent-foreground: #8a6fd1;
   --destructive: #e5484d;
-  --border: #ffffff14;
-  --input: #ffffff1a;
-  --ring: #e3350d;
-  --chart-1: #e3350d;
-  --chart-2: #ffcb05;
-  --chart-3: #4fd8e8;
-  --chart-4: #8bd450;
-  --chart-5: #f06aa7;
-  --sidebar: #12121c;
-  --sidebar-foreground: #f2ede2;
-  --sidebar-primary: #e3350d;
-  --sidebar-primary-foreground: #fff4ec;
-  --sidebar-accent: #2a2a3f;
-  --sidebar-accent-foreground: #ffcb05;
-  --sidebar-border: #ffffff14;
-  --sidebar-ring: #e3350d;
+  --border: #f5dee8;
+  --input: #f0d9e3;
+  --ring: #f06ba8;
+  --chart-1: #f06ba8;
+  --chart-2: #b9a7f2;
+  --chart-3: #7fd8be;
+  --chart-4: #ffd97d;
+  --chart-5: #8ecdf7;
+  --sidebar: #fff1f6;
+  --sidebar-foreground: #6d5a66;
+  --sidebar-primary: #f06ba8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3edff;
+  --sidebar-accent-foreground: #8a6fd1;
+  --sidebar-border: #f5dee8;
+  --sidebar-ring: #f06ba8;
 }
 
 .dark {
-  --background: #0e0e16;
-  --foreground: #f2ede2;
-  --card: #16162299;
-  --card-foreground: #f2ede2;
-  --popover: #171724;
-  --popover-foreground: #f2ede2;
-  --primary: #e3350d;
-  --primary-foreground: #fff4ec;
-  --secondary: #23233499;
-  --secondary-foreground: #f2ede2;
-  --muted: #1d1d2c;
-  --muted-foreground: #9a97a8;
-  --accent: #2a2a3f;
-  --accent-foreground: #ffcb05;
+  /* the dex stays sweet even if a dark mode is ever toggled */
+  --background: #fff8f3;
+  --foreground: #6d5a66;
+  --card: #ffffff;
+  --card-foreground: #6d5a66;
+  --popover: #ffffff;
+  --popover-foreground: #6d5a66;
+  --primary: #f06ba8;
+  --primary-foreground: #ffffff;
+  --secondary: #fdeff5;
+  --secondary-foreground: #6d5a66;
+  --muted: #f9eef2;
+  --muted-foreground: #a892a0;
+  --accent: #f3edff;
+  --accent-foreground: #8a6fd1;
   --destructive: #e5484d;
-  --border: #ffffff14;
-  --input: #ffffff1a;
-  --ring: #e3350d;
+  --border: #f5dee8;
+  --input: #f0d9e3;
+  --ring: #f06ba8;
 }
 
 @layer base {
@@ -120,100 +126,82 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(1200px 500px at 80% -10%, #e3350d14, transparent),
-      radial-gradient(900px 420px at 5% 110%, #4fd8e80d, transparent);
+      radial-gradient(1100px 480px at 85% -10%, #f3edffcc, transparent),
+      radial-gradient(900px 420px at -5% 0%, #fdeff5dd, transparent),
+      radial-gradient(1000px 460px at 50% 115%, #e7f8f1bb, transparent);
     background-attachment: fixed;
   }
 }
 
 /* ---------- Lillipokedex custom utilities ---------- */
 
-.font-pixel {
-  font-family: var(--font-pixel);
-  letter-spacing: 0.02em;
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
 }
-.font-lcd {
-  font-family: var(--font-lcd);
-  letter-spacing: 0.04em;
+.font-soft {
+  font-family: var(--font-soft);
 }
 .font-body {
-  font-family: var(--font-sans-body);
+  font-family: var(--font-soft);
 }
 
-/* CRT screen with scanlines + glow */
-.crt-screen {
+/* Cloud panel: soft cream card that replaces the old CRT screen */
+.cloud-panel {
   position: relative;
   background:
-    linear-gradient(180deg, #101a1f 0%, #0c1216 100%);
+    radial-gradient(340px 200px at 88% 12%, #f3edff88, transparent),
+    radial-gradient(300px 190px at 6% 92%, #fdeff5aa, transparent),
+    linear-gradient(180deg, #fffdfb 0%, #fff6f0 100%);
+  border: 2px solid #f9e3ec;
   box-shadow:
-    inset 0 0 40px #000000aa,
-    inset 0 0 6px #4fd8e833,
-    0 0 0 3px #1c1c2c,
-    0 10px 30px #00000066;
+    0 14px 34px rgba(240, 107, 168, 0.12),
+    0 4px 10px rgba(240, 107, 168, 0.06);
   overflow: hidden;
 }
-.crt-screen::before {
-  content: "";
+
+/* floating pastel bubble decorations (place inside .cloud-panel) */
+.bubble {
   position: absolute;
-  inset: 0;
+  border-radius: 9999px;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    #00000026 0px,
-    #00000026 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  z-index: 5;
+  opacity: 0.55;
 }
-.crt-screen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, transparent 40%, #4fd8e814 50%, transparent 60%);
-  animation: crt-sweep 7s linear infinite;
-  z-index: 6;
+.bubble-pink { background: #fbcfe4; }
+.bubble-lavender { background: #ddd3fa; }
+.bubble-mint { background: #c8f0e2; }
+.bubble-butter { background: #ffeec4; }
+.bubble-sky { background: #cfe8fa; }
+
+/* candy-styled card (replaces the old pixel-card) */
+.candy-card {
+  background: #ffffff;
+  border: 2px solid #f5dee8;
+  border-radius: 1.5rem;
+  box-shadow:
+    0 8px 24px rgba(240, 107, 168, 0.10),
+    0 2px 6px rgba(240, 107, 168, 0.05);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.candy-card:hover {
+  transform: translateY(-4px);
+  border-color: #f9bfd8;
+  box-shadow:
+    0 16px 34px rgba(240, 107, 168, 0.18),
+    0 4px 10px rgba(240, 107, 168, 0.08);
 }
 
-@keyframes crt-sweep {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(120%);
-  }
-}
-
-/* Radar scanning line inside the hero LCD */
-.radar-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #4fd8e8cc, transparent);
-  filter: drop-shadow(0 0 6px #4fd8e8);
-  animation: radar 3.2s ease-in-out infinite;
-  opacity: 0.75;
-}
-@keyframes radar {
-  0%,
-  100% {
-    top: 8%;
-  }
-  50% {
-    top: 88%;
-  }
-}
-
-/* live pulse dot */
+/* live pulse dot (strawberry) */
 .pulse-dot {
   position: relative;
   width: 8px;
   height: 8px;
   border-radius: 9999px;
-  background: #35e065;
-  box-shadow: 0 0 0 0 #35e065aa;
+  background: #f06ba8;
+  box-shadow: 0 0 0 0 #f06ba8aa;
   animation: pulse-dot 1.8s ease-out infinite;
 }
 .pulse-dot.err {
@@ -234,125 +222,103 @@
   }
 }
 
-/* sprite idle float */
+/* sprite idle float — gentle + a tiny tilt for extra cuteness */
 @keyframes floaty {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-5px) rotate(-1.5deg);
   }
 }
 .floaty {
-  animation: floaty 2.6s ease-in-out infinite;
+  animation: floaty 3.2s ease-in-out infinite;
+}
+.floaty {
   image-rendering: pixelated;
 }
 
-/* pixel-styled card border */
-.pixel-card {
-  border: 2px solid #ffffff1a;
-  box-shadow:
-    0 0 0 2px #0e0e16,
-    0 0 0 4px #ffffff0d,
-    0 8px 24px #00000059;
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
+/* slow drifting bubbles inside the hero */
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
 }
-.pixel-card:hover {
-  transform: translateY(-3px);
-  border-color: #e3350d66;
-  box-shadow:
-    0 0 0 2px #0e0e16,
-    0 0 0 4px #e3350d33,
-    0 14px 30px #00000080;
+.bob {
+  animation: bob 5s ease-in-out infinite;
 }
 
-/* chunky pokedex hinge bar */
-.hinge-bar {
-  background: linear-gradient(180deg, #e3350d 0%, #a91e0b 100%);
-  box-shadow: inset 0 -3px 0 #00000040, inset 0 3px 0 #ff6a4db3;
+/* NEW! badge wiggle */
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-4deg) scale(1);
+  }
+  50% {
+    transform: rotate(5deg) scale(1.08);
+  }
+}
+.wiggle {
+  animation: wiggle 1.6s ease-in-out infinite;
+  display: inline-block;
 }
 
-/* LED lights (classic pokedex corner) */
-.led {
-  width: 14px;
-  height: 14px;
-  border-radius: 9999px;
-  border: 2px solid #ffffff40;
-}
-.led-blue {
-  background: radial-gradient(circle at 35% 30%, #bfefff, #3aa8ff 55%, #1d5fbf);
-  box-shadow: 0 0 10px #3aa8ff88;
-}
-.led-red {
-  background: radial-gradient(circle at 35% 30%, #ffd2c4, #ff5030 55%, #b91c0c);
-  box-shadow: 0 0 10px #ff503088;
-}
-.led-yellow {
-  background: radial-gradient(circle at 35% 30%, #fff3b0, #ffcb05 55%, #c79100);
-  box-shadow: 0 0 10px #ffcb0588;
-}
-.led-green {
-  background: radial-gradient(circle at 35% 30%, #d2ffd2, #35e065 55%, #128a33);
-  box-shadow: 0 0 10px #35e06588;
-}
-
-/* LCD text color */
-.lcd-text {
-  color: #7ff3e3;
-  text-shadow: 0 0 8px #4fd8e866;
-}
-
-/* thin custom scrollbars */
+/* thin custom scrollbars (pastel) */
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-track {
-  background: #12121c;
+  background: #fdf1e9;
 }
 *::-webkit-scrollbar-thumb {
-  background: #2a2a3f;
+  background: #f3cede;
   border-radius: 4px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #3a3a55;
+  background: #e9b5cc;
 }
 
 /* ---------- UI polish ---------- */
 
-/* visible keyboard focus in pokedex yellow */
+/* visible keyboard focus in candy pink */
 :focus-visible {
-  outline: 2px solid var(--pokedex-yellow);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 /* fun text selection */
 ::selection {
-  background: #ffcb0540;
-  color: #fff8e7;
+  background: #fbcfe4;
+  color: #6d5a66;
 }
 
-/* card entrance (staggered via inline animation-delay) */
+/* card entrance (staggered via inline animation-delay) — squash & stretch */
 @keyframes pop-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.96);
+    transform: translateY(12px) scale(0.85);
   }
-  to {
+  70% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.03);
+  }
+  100% {
     opacity: 1;
     transform: none;
   }
 }
 .anim-pop {
-  animation: pop-in 0.38s cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+  animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* live wire row slide-in */
+/* feed row slide-in */
 @keyframes feed-in {
   from {
     opacity: 0;
@@ -371,16 +337,16 @@
 @keyframes toast-up {
   from {
     opacity: 0;
-    transform: translate(-50%, 16px);
+    transform: translate(-50%, 16px) scale(0.94);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translate(-50%, 0) scale(1);
   }
 }
 .anim-toast {
   left: 50%;
-  animation: toast-up 0.3s ease both;
+  animation: toast-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 /* auto-dismiss timer bar inside the toast */
@@ -396,7 +362,7 @@
   animation: toast-bar 5.2s linear both;
 }
 
-/* typewriter caret */
+/* typewriter caret — tiny rounded heart-colored bar */
 @keyframes caret-blink {
   0%,
   49% {
@@ -409,28 +375,29 @@
 }
 .caret {
   display: inline-block;
-  width: 0.55em;
+  width: 0.5em;
   height: 1em;
-  background: var(--pokedex-yellow);
+  border-radius: 3px;
+  background: var(--primary);
   margin-left: 3px;
   vertical-align: -0.12em;
   animation: caret-blink 1s step-end infinite;
 }
 
-/* freshly discovered species glow */
+/* freshly discovered species glow — strawberry halo */
 @keyframes new-glow {
   0%,
   100% {
     box-shadow:
-      0 0 0 1px #ffcb0555,
-      0 0 18px #ffcb052e,
-      0 8px 24px #00000059;
+      0 0 0 2px #fbcfe4,
+      0 0 18px rgba(240, 107, 168, 0.25),
+      0 8px 24px rgba(240, 107, 168, 0.12);
   }
   50% {
     box-shadow:
-      0 0 0 1px #ffcb0599,
-      0 0 26px #ffcb0555,
-      0 8px 24px #00000059;
+      0 0 0 3px #f7a8cc,
+      0 0 30px rgba(240, 107, 168, 0.4),
+      0 8px 24px rgba(240, 107, 168, 0.12);
   }
 }
 .new-glow {
@@ -439,9 +406,9 @@
 
 /* respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
-  .radar-line,
-  .crt-screen::after,
   .floaty,
+  .bob,
+  .wiggle,
   .pulse-dot,
   .anim-pop,
   .anim-feed,
@@ -454,8 +421,8 @@
   .floaty {
     transform: none;
   }
-  .pixel-card,
-  .pixel-card:hover {
+  .candy-card,
+  .candy-card:hover {
     transition: none;
     transform: none;
   }

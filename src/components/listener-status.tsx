@@ -60,15 +60,15 @@ export function ListenerStatus() {
 
   return (
     <div
-      className="hidden items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 sm:flex"
+      className="hidden items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-[0_2px_8px_rgba(240,107,168,0.08)] sm:flex"
       title="Server-side 24/7 chat listener — keeps discovering species even when nobody has the site open"
     >
       <span className={`pulse-dot ${phase === "online" ? "" : "err"}`} />
-      <span className="font-lcd text-sm text-foreground">
-        {phase === "online" ? "24/7 LISTENER" : phase === "booting" ? "LISTENER…" : "LISTENER OFFLINE"}
+      <span className="font-soft text-sm font-bold text-foreground">
+        {phase === "online" ? "24/7 listener" : phase === "booting" ? "listener…" : "listener offline"}
       </span>
       {phase === "online" && scanned !== null && (
-        <span className="font-lcd hidden text-xs text-muted-foreground lg:inline">
+        <span className="font-soft hidden text-xs font-semibold text-muted-foreground lg:inline">
           {scanned.toLocaleString("en-US")} msgs
         </span>
       )}

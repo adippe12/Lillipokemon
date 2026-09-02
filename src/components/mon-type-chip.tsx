@@ -33,7 +33,7 @@ export function MonTypeChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-lcd text-[12px] leading-none",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-soft text-[12px] leading-none",
         className
       )}
       style={{

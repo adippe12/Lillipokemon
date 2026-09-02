@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MonSprite } from "@/components/mon-sprite";
+import { MonSprite, spriteBubbleBg } from "@/components/mon-sprite";
 import {
   Check,
   ExternalLink,
@@ -74,16 +74,16 @@ export default function AdminPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-secondary/40">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-          <h1 className="font-pixel text-xs text-foreground">
+          <h1 className="font-display text-xs text-foreground">
             LILLI<span className="text-primary">PEDEX</span>{" "}
             <span className="text-muted-foreground">/ team console</span>
           </h1>
           <div className="flex items-center gap-3">
-            <a href="/" className="font-lcd flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <a href="/" className="font-soft flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               Back to dex <ExternalLink className="h-3 w-3" />
             </a>
             {authState === "in" && (
-              <Button variant="ghost" size="sm" className="font-lcd" onClick={() => supabase.auth.signOut()}>
+              <Button variant="ghost" size="sm" className="font-soft" onClick={() => supabase.auth.signOut()}>
                 <LogOut className="mr-1 h-3.5 w-3.5" /> Sign out
               </Button>
             )}
@@ -101,14 +101,14 @@ export default function AdminPage() {
         )}
         {authState === "out" && (
           <div className="mx-auto max-w-sm rounded-xl border border-border bg-card p-6">
-            <h2 className="font-pixel mb-4 text-[11px] uppercase text-muted-foreground">Team sign-in</h2>
+            <h2 className="font-display mb-4 text-[11px] uppercase text-muted-foreground">Team sign-in</h2>
             <form onSubmit={signIn} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="font-lcd">Email</Label>
-                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary/70 font-lcd" />
+                <Label htmlFor="email" className="font-soft">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary/70 font-soft" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="font-lcd">Password</Label>
+                <Label htmlFor="password" className="font-soft">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -116,15 +116,15 @@ export default function AdminPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-secondary/70 pr-10 font-lcd"
+                    className="bg-secondary/70 pr-10 font-soft"
                   />
                   <button type="button" aria-label={showPass ? "Hide password" : "Show password"} onClick={() => setShowPass((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground">
                     {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-              {authError && <p className="font-lcd text-sm text-destructive">{authError}</p>}
-              <Button type="submit" disabled={signingIn} className="font-pixel w-full text-[11px] uppercase hover:bg-pokedex-dark-red">
+              {authError && <p className="font-soft text-sm text-destructive">{authError}</p>}
+              <Button type="submit" disabled={signingIn} className="font-display w-full text-[11px] uppercase hover:bg-pokedex-dark-red">
                 {signingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Sign in
               </Button>
             </form>
@@ -238,27 +238,27 @@ function Console() {
     <div className="space-y-6">
       {msg && (
         <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
-          <AlertDescription className="font-lcd text-sm">{msg}</AlertDescription>
+          <AlertDescription className="font-soft text-sm">{msg}</AlertDescription>
         </Alert>
       )}
       <div className="flex items-center justify-between">
-        <h2 className="font-pixel text-xs uppercase text-muted-foreground">
+        <h2 className="font-display text-xs uppercase text-muted-foreground">
           Research queue — {pendingDesc.length + pendingImg.length} pending
         </h2>
-        <Button variant="ghost" size="sm" className="font-lcd" onClick={() => void load()}>
+        <Button variant="ghost" size="sm" className="font-soft" onClick={() => void load()}>
           <RefreshCw className="mr-1 h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
 
       <Tabs defaultValue="descriptions">
         <TabsList className="bg-secondary">
-          <TabsTrigger value="descriptions" className="font-lcd gap-1.5">
+          <TabsTrigger value="descriptions" className="font-soft gap-1.5">
             <PenLine className="h-4 w-4" /> Descriptions ({pendingDesc.length})
           </TabsTrigger>
-          <TabsTrigger value="images" className="font-lcd gap-1.5">
+          <TabsTrigger value="images" className="font-soft gap-1.5">
             <ImageIcon className="h-4 w-4" /> Images ({pendingImg.length})
           </TabsTrigger>
-          <TabsTrigger value="species" className="font-lcd gap-1.5">
+          <TabsTrigger value="species" className="font-soft gap-1.5">
             Species ({mons.length})
           </TabsTrigger>
         </TabsList>
@@ -273,16 +273,16 @@ function Console() {
               <div key={p.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary" className="font-lcd">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
-                    <span className="font-lcd text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
+                    <Badge variant="secondary" className="font-soft">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
+                    <span className="font-soft text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
                   </div>
                   <p className="text-sm text-foreground">&ldquo;{p.content}&rdquo;</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button size="sm" className="font-lcd" onClick={() => void review(p, true)} disabled={busyId === p.id}>
+                  <Button size="sm" className="font-soft" onClick={() => void review(p, true)} disabled={busyId === p.id}>
                     {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Approve
                   </Button>
-                  <Button size="sm" variant="destructive" className="font-lcd" onClick={() => void review(p, false)} disabled={busyId === p.id}>
+                  <Button size="sm" variant="destructive" className="font-soft" onClick={() => void review(p, false)} disabled={busyId === p.id}>
                     <X className="mr-1 h-4 w-4" /> Reject
                   </Button>
                 </div>
@@ -299,22 +299,21 @@ function Console() {
           ) : (
             pendingImg.map((p) => (
               <div key={p.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
-                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-lg bg-[#101a1f]">
-                  { }
+                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary/70">
                   <img src={publicImageUrl(p.content)} alt="Proposed artwork" className="max-h-28 max-w-28 object-contain" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary" className="font-lcd">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
-                    <span className="font-lcd text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
+                    <Badge variant="secondary" className="font-soft">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
+                    <span className="font-soft text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
                   </div>
-                  <p className="font-lcd truncate text-xs text-muted-foreground">{p.content}</p>
+                  <p className="font-soft truncate text-xs text-muted-foreground">{p.content}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button size="sm" className="font-lcd" onClick={() => void review(p, true)} disabled={busyId === p.id}>
+                  <Button size="sm" className="font-soft" onClick={() => void review(p, true)} disabled={busyId === p.id}>
                     {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Approve
                   </Button>
-                  <Button size="sm" variant="destructive" className="font-lcd" onClick={() => void review(p, false)} disabled={busyId === p.id}>
+                  <Button size="sm" variant="destructive" className="font-soft" onClick={() => void review(p, false)} disabled={busyId === p.id}>
                     <X className="mr-1 h-4 w-4" /> Reject
                   </Button>
                 </div>
@@ -326,9 +325,8 @@ function Console() {
         <TabsContent value="species" className="mt-4 space-y-3">
           {mons.map((m) => (
             <div key={m.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
-              <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#101a1f]">
+              <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border" style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}>
                 {m.image_path ? (
-                   
                   <img src={publicImageUrl(m.image_path)} alt="" className="h-14 w-14 object-contain" />
                 ) : (
                   <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} />
@@ -336,21 +334,21 @@ function Console() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-lcd text-sm text-muted-foreground">{pokedexNumber(m.pokedex_no)}</span>
-                  <span className="font-pixel text-[11px] uppercase">{displayName(m.name)}</span>
-                  <Badge variant="secondary" className="font-lcd">{m.spotted_count} spotted</Badge>
-                  <Badge variant="secondary" className="font-lcd">by @{m.discovered_by}</Badge>
+                  <span className="font-soft text-sm text-muted-foreground">{pokedexNumber(m.pokedex_no)}</span>
+                  <span className="font-display text-[11px] uppercase">{displayName(m.name)}</span>
+                  <Badge variant="secondary" className="font-soft">{m.spotted_count} spotted</Badge>
+                  <Badge variant="secondary" className="font-soft">by @{m.discovered_by}</Badge>
                 </div>
                 {m.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">&ldquo;{m.description}&rdquo;</p>}
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" className="font-lcd" disabled={busyId === m.id || !m.description} onClick={() => void clearField(m, "description")}>
+                <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.description} onClick={() => void clearField(m, "description")}>
                   <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear desc
                 </Button>
-                <Button size="sm" variant="outline" className="font-lcd" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
+                <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
                   <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear art
                 </Button>
-                <Button size="sm" variant="destructive" className="font-lcd" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
+                <Button size="sm" variant="destructive" className="font-soft" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
                   <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove species
                 </Button>
               </div>
@@ -362,19 +360,19 @@ function Console() {
       <AlertDialog open={removeTarget !== null} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent className="border-border bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-pixel text-xs uppercase">
+            <AlertDialogTitle className="font-display text-xs uppercase">
               Remove {removeTarget ? displayName(removeTarget.name) : ""}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="font-lcd text-sm leading-relaxed">
+            <AlertDialogDescription className="font-soft text-sm leading-relaxed">
               This permanently deletes the dex entry, every proposal and image submitted for it,
               and retires its trigger word — chat can no longer re-discover it. The pokedex number
               is never reused. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="font-lcd" disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="font-soft" disabled={removing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="font-lcd bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="font-soft bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={removing}
               onClick={(e) => {
                 e.preventDefault();
@@ -394,7 +392,7 @@ function Console() {
 function Empty({ text }: { text: string }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-10 text-center">
-      <p className="font-lcd text-sm text-muted-foreground">{text}</p>
+      <p className="font-soft text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }

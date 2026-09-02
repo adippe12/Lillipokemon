@@ -1,10 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0e0e16"/>
-  <circle cx="32" cy="32" r="21" fill="#fff8e7"/>
-  <path d="M32 11 a21 21 0 0 1 0 42 a21 21 0 0 1 0-42 z" fill="#e3350d" transform="rotate(180 32 21.5)"/>
-  <path d="M11 32 a21 21 0 0 1 42 0 z" fill="#e3350d"/>
-  <rect x="11" y="30" width="42" height="4" fill="#0e0e16"/>
-  <circle cx="32" cy="32" r="8" fill="#0e0e16"/>
-  <circle cx="32" cy="32" r="6.5" fill="#fff8e7"/>
-  <circle cx="32" cy="32" r="4" fill="#e3350d"/>
+  <rect width="64" height="64" rx="16" fill="#fff1f6"/>
+  <!-- little ears -->
+  <circle cx="17" cy="16" r="7" fill="#f06ba8"/>
+  <circle cx="47" cy="16" r="7" fill="#f06ba8"/>
+  <circle cx="17" cy="16" r="3.4" fill="#fbcfe4"/>
+  <circle cx="47" cy="16" r="3.4" fill="#fbcfe4"/>
+  <!-- face -->
+  <circle cx="32" cy="36" r="19" fill="#f06ba8"/>
+  <!-- eyes -->
+  <circle cx="24.5" cy="33" r="4" fill="#4a3b45"/>
+  <circle cx="39.5" cy="33" r="4" fill="#4a3b45"/>
+  <circle cx="26" cy="31.5" r="1.4" fill="#ffffff"/>
+  <circle cx="41" cy="31.5" r="1.4" fill="#ffffff"/>
+  <!-- blush -->
+  <ellipse cx="18.5" cy="40" rx="3.6" ry="2.4" fill="#f7a8cc"/>
+  <ellipse cx="45.5" cy="40" rx="3.6" ry="2.4" fill="#f7a8cc"/>
+  <!-- smile -->
+  <path d="M26 42 q6 5.5 12 0" stroke="#4a3b45" stroke-width="2.4" fill="none" stroke-linecap="round"/>
 </svg>
