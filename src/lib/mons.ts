@@ -166,6 +166,59 @@ export function formatDate(iso: string): string {
   });
 }
 
+/** Compact relative time for feeds ("just now", "42s ago", "3m ago", "2h ago", "Sep 2"). */
+export function relativeTime(iso: string, now = Date.now()): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const s = Math.max(0, Math.floor((now - t) / 1000));
+  if (s < 10) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** True when this species was discovered less than `ms` milliseconds ago. */
+export function isFreshDiscovery(iso: string, ms = 120_000): boolean {
+  const t = new Date(iso).getTime();
+  return !Number.isNaN(t) && Date.now() - t < ms;
+}
+
+// ---------- deterministic cosmetic "type" (purely flavor, stable per name) ----------
+
+export type MonType = { key: string; label: string; color: string };
+
+export const MON_TYPES: MonType[] = [
+  { key: "ember", label: "Ember", color: "#ff7a45" },
+  { key: "tide", label: "Tide", color: "#4fa8ff" },
+  { key: "leaf", label: "Leaf", color: "#7ed957" },
+  { key: "spark", label: "Spark", color: "#ffd23f" },
+  { key: "frost", label: "Frost", color: "#7fe6e0" },
+  { key: "shade", label: "Shade", color: "#a78bfa" },
+  { key: "pixie", label: "Pixie", color: "#f67ac1" },
+  { key: "stone", label: "Stone", color: "#c2bbad" },
+  { key: "breeze", label: "Breeze", color: "#66d9c2" },
+  { key: "radiant", label: "Radiant", color: "#ffab4f" },
+];
+
+/** FNV-1a string hash (same scheme as the sprite generator). */
+function fnv1a(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Stable cosmetic element for a species name (never changes for the same name). */
+export function monTypeOf(name: string): MonType & { index: number } {
+  const idx = fnv1a(name.toLowerCase()) % MON_TYPES.length;
+  return { ...MON_TYPES[idx], index: idx };
+}
+
 export function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }

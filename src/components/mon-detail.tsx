@@ -13,10 +13,13 @@ import {
   pokedexNumber,
   formatDate,
   formatNumber,
+  relativeTime,
+  monTypeOf,
   passesQuickFilter,
   canonicalize,
 } from "@/lib/mons";
 import { MonSprite } from "./mon-sprite";
+import { MonTypeChip } from "./mon-type-chip";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +35,10 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  Check,
   FlaskConical,
   ImageIcon,
+  Link2,
   Loader2,
   PenLine,
   ShieldCheck,
@@ -45,10 +50,11 @@ import {
 type Props = {
   mon: Mon | null;
   pendingCount: number;
+  maxSpotted: number;
   onOpenChange: (open: boolean) => void;
 };
 
-export function MonDetailDialog({ mon, pendingCount, onOpenChange }: Props) {
+export function MonDetailDialog({ mon, pendingCount, maxSpotted, onOpenChange }: Props) {
   return (
     <Dialog open={!!mon} onOpenChange={onOpenChange}>
       {mon && (
@@ -59,14 +65,14 @@ export function MonDetailDialog({ mon, pendingCount, onOpenChange }: Props) {
               Details and research proposals for {displayName(mon.name)}.
             </DialogDescription>
           </DialogHeader>
-          <DetailBody mon={mon} pendingCount={pendingCount} onOpenChange={onOpenChange} />
+          <DetailBody mon={mon} pendingCount={pendingCount} maxSpotted={maxSpotted} onOpenChange={onOpenChange} />
         </DialogContent>
       )}
     </Dialog>
   );
 }
 
-function DetailBody({ mon, pendingCount }: { mon: Mon; pendingCount: number; onOpenChange: (o: boolean) => void }) {
+function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount: number; maxSpotted: number; onOpenChange: (o: boolean) => void }) {
   // Dialog content mounts only after user interaction (post-hydration),
   // so a lazy initializer reading localStorage is hydration-safe.
   const [nickname, setNickname] = useState(() => {
@@ -84,24 +90,29 @@ function DetailBody({ mon, pendingCount }: { mon: Mon; pendingCount: number; onO
     <div className="space-y-5">
       {/* header */}
       <div className="flex items-start gap-4">
-        <div className="floaty flex h-28 w-28 shrink-0 items-center justify-center rounded-xl bg-[#101a1f] shadow-[inset_0_0_24px_#000000cc]">
+        <div className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-xl bg-[#101a1f] shadow-[inset_0_0_24px_#000000cc]">
+          <span
+            className="pointer-events-none absolute inset-0 rounded-xl opacity-60"
+            style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}22, transparent)` }}
+            aria-hidden
+          />
           {mon.image_path ? (
-             
             <img
               src={publicImageUrl(mon.image_path)}
               alt={`${mon.name} approved artwork`}
-              className="h-24 w-24 rounded-lg object-contain"
+              className="relative h-24 w-24 rounded-lg object-contain"
             />
           ) : (
-            <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} />
+            <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" />
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-lcd text-lg text-muted-foreground">{pokedexNumber(mon.pokedex_no)}</span>
             <h2 className="font-pixel truncate text-base uppercase text-pokedex-yellow">
               {displayName(mon.name)}
             </h2>
+            <MonTypeChip name={mon.name} />
           </div>
           <div className="flex flex-wrap gap-1.5 font-lcd text-[13px]">
             <Badge variant="secondary" className="border border-pokedex-cyan/30 bg-pokedex-cyan/10 text-pokedex-cyan">
@@ -120,10 +131,14 @@ function DetailBody({ mon, pendingCount }: { mon: Mon; pendingCount: number; onO
             )}
           </div>
           <p className="font-lcd text-sm text-muted-foreground">
-            last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {formatDate(mon.last_spotted_at)}
+            last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
           </p>
         </div>
+        <ShareButton mon={mon} />
       </div>
+
+      {/* popularity vs top species */}
+      {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
 
       {/* description */}
       <div className="rounded-lg border border-border bg-secondary/60 p-4">
@@ -465,4 +480,92 @@ function ImageForm({
       </p>
     </div>
   );
+}
+
+/** Copy-to-clipboard share button producing a #mon-<name> deep link. */
+function ShareButton({ mon }: { mon: Mon }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  async function copy() {
+    const url = `${window.location.origin}/#mon-${mon.name}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // clipboard API can be unavailable (http / older browsers)
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        /* give up silently */
+      }
+      ta.remove();
+    }
+    setCopied(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={copy}
+      className="font-lcd shrink-0 gap-1.5 border border-border px-2.5"
+      aria-label={`Copy share link for ${displayName(mon.name)}`}
+    >
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-pokedex-cyan" />
+          <span className="hidden sm:inline text-pokedex-cyan">COPIED!</span>
+        </>
+      ) : (
+        <>
+          <Link2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Share</span>
+        </>
+      )}
+    </Button>
+  );
+}
+
+/** Horizontal bar comparing this species' spot count to the most-spotted one. */
+function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: number }) {
+  const pct = Math.max(4, Math.round((spotted / maxSpotted) * 100));
+  const isTop = spotted >= maxSpotted;
+  return (
+    <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+      <div className="mb-1.5 flex items-center justify-between font-lcd text-xs">
+        <span className="text-muted-foreground">DEX POPULARITY</span>
+        <span className={isTop ? "text-pokedex-yellow" : "text-muted-foreground"}>
+          {isTop ? "top species!" : `${formatNumber(maxSpotted)} top record`}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-black/40">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-pokedex-cyan to-pokedex-yellow transition-[width] duration-700"
+          style={{ width: `${pct}%` }}
+          role="meter"
+          aria-valuenow={spotted}
+          aria-valuemin={0}
+          aria-valuemax={maxSpotted}
+          aria-label="Popularity compared to the most spotted species"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Same palette as MonTypeChip, for glow accents around the sprite. */
+function typeColor(name: string): string {
+  return monTypeOf(name).color;
 }

@@ -321,3 +321,142 @@
 *::-webkit-scrollbar-thumb:hover {
   background: #3a3a55;
 }
+
+/* ---------- UI polish ---------- */
+
+/* visible keyboard focus in pokedex yellow */
+:focus-visible {
+  outline: 2px solid var(--pokedex-yellow);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* fun text selection */
+::selection {
+  background: #ffcb0540;
+  color: #fff8e7;
+}
+
+/* card entrance (staggered via inline animation-delay) */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-pop {
+  animation: pop-in 0.38s cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+}
+
+/* live wire row slide-in */
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-feed {
+  animation: feed-in 0.3s ease both;
+}
+
+/* discovery toast rise (wrapper keeps -translate-x-1/2 centering) */
+@keyframes toast-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.anim-toast {
+  left: 50%;
+  animation: toast-up 0.3s ease both;
+}
+
+/* auto-dismiss timer bar inside the toast */
+@keyframes toast-bar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+.toast-timer-bar {
+  animation: toast-bar 5.2s linear both;
+}
+
+/* typewriter caret */
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  background: var(--pokedex-yellow);
+  margin-left: 3px;
+  vertical-align: -0.12em;
+  animation: caret-blink 1s step-end infinite;
+}
+
+/* freshly discovered species glow */
+@keyframes new-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px #ffcb0555,
+      0 0 18px #ffcb052e,
+      0 8px 24px #00000059;
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px #ffcb0599,
+      0 0 26px #ffcb0555,
+      0 8px 24px #00000059;
+  }
+}
+.new-glow {
+  animation: new-glow 2s ease-in-out infinite;
+}
+
+/* respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .radar-line,
+  .crt-screen::after,
+  .floaty,
+  .pulse-dot,
+  .anim-pop,
+  .anim-feed,
+  .anim-toast,
+  .toast-timer-bar,
+  .new-glow,
+  .caret {
+    animation: none !important;
+  }
+  .floaty {
+    transform: none;
+  }
+  .pixel-card,
+  .pixel-card:hover {
+    transition: none;
+    transform: none;
+  }
+}
