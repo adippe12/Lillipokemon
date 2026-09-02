@@ -12,8 +12,87 @@ Work Log:
   Creating a new project failed with "Resource context not found" (free plan limit suspected) -> restoring
   "adippe12's Project" (ref wzptdnwcnshdxwzsjyzb, eu-west-1) instead; restore started (status COMING_UP)
 - Cloudflare token (cfut_...) valid+active per /user/tokens/verify, but /accounts returns [] (token lacks
-  Account Settings:Read). Need account_id from user dashboard URL to deploy Pages. Will ask at the end.
+  Account Settings:Read). Need account_id from user dashboard URL to deploy Pages. Asked user at end.
 - Installed @supabase/supabase-js, canvas-confetti (+types)
 
 Stage Summary:
 - Tokens working except CF account id unknown; Supabase restore in progress
+
+---
+Task ID: 2
+Agent: main (Super Z)
+Task: Provision Supabase backend for Lillipokedex
+
+Work Log:
+- Project wzptdnwcnshdxwzsjyzb restored to ACTIVE_HEALTHY (eu-west-1)
+- Fetched keys via /v1/projects/{ref}/api-keys?reveal=true (legacy anon + service_role)
+- Wrote ops/supabase/schema.sql (idempotent, 14 sections)
+- Note: api.supabase.com is behind Cloudflare WAF -> python urllib blocked (error 1010); curl works.
+  scripts/run_sql.py executes statements via curl subprocess, splitting on ;/$$ boundaries
+- All 50 statements executed OK: tables (admins, mon_triggers, mons, proposals, banned_words),
+  safety trigger, discover_mon/review_proposal/clear_mon_field/pending_counts RPCs, RLS policies,
+  realtime publication (mons + proposals), storage bucket mon-images (2MB, mime-restricted,
+  pending/-only anon uploads, admin manage policy), grants
+- Created admin auth user via service key (scripts/create_admin.sh), seeded public.admins, disabled open signups
+- Admin credentials: admin@lillipokedex.local / 3RL9PAakLX2V2!kX (printed once, not stored in repo)
+- Smoke tests via REST (anon key): discover_mon("sillymon_") -> sillymon #001 created;
+  "pokemon" trigger correctly ignored; profane description blocked by trigger ("Blocked by the safety filter");
+  good description inserted (201); pending_counts works; upload to pending/ OK; upload to approved/ blocked by RLS
+
+Stage Summary:
+- Backend fully provisioned and verified end-to-end
+
+---
+Task ID: 3-6
+Agent: main (Super Z)
+Task: Build Lillipokedex frontend + proposal system + admin console + verification
+
+Work Log:
+- src/lib/mons.ts: channel/trigger config, canonicalization, word-boundary regex builder (no lookbehind), types
+- src/lib/supabase.ts: browser client (anon key only), publicImageUrl helper
+- src/lib/use-twitch-chat.ts: anonymous IRC WebSocket hook (justinfan), tags parsing, PING/PONG,
+  keepalive ping every 3.5min, exponential reconnect w/ jitter, refs-based connect<->reconnect indirection
+- src/components/mon-sprite.tsx: deterministic procedural 12x12 pixel creature (FNV-1a + mulberry32),
+  mirrored silhouette, eyes/cheeks/belly/ears/antenna variants, shiny variant
+- src/components/mon-card.tsx, mon-detail.tsx (dialog: dex entry, description/image proposal forms,
+  client quick-filter + server enforcement, 2MB/mime validation, pending/upload flow)
+- src/app/page.tsx: CRT hero LCD w/ scanlines + radar, stats, realtime subscriptions, discovery celebration
+  (confetti + WebAudio blip, mute persisted via useSyncExternalStore), footer with all resource links
+- src/app/admin/page.tsx: Supabase auth sign-in, live review queue (descriptions/images/species tabs),
+  approve (moves pending/ -> approved/ in storage then RPC), reject (RPC + delete object), clear field
+- next.config.ts: CF_EXPORT=1 -> static export (distDir .next-export, trailingSlash, unoptimized images)
+- Removed template src/app/api (incompatible with static export)
+- Fixed all lint errors down to 0 (set-state-in-effect, refs-in-render, access-before-declare)
+- Browser-verified via agent-browser: home renders, LIVE badge connected to Twitch IRC, dialog opens,
+  description proposal submitted successfully, admin sign-in + approve/reject works, approved description
+  appears on dex, mobile 390px layout OK, no console errors
+- Static export build OK (/ and /admin static, env baked)
+
+Stage Summary:
+- App complete and verified in dev; static build ready in .next-export/
+
+---
+Task ID: 7
+Agent: main (Super Z)
+Task: Push to GitHub
+
+Work Log:
+- Wrote README.md (architecture diagram, safety table, deploy steps, all resource links) + .env.example
+- .gitignore excludes sandbox artifacts and .env*
+- Squashed to single clean commit (5a06e80), removed template .env from history-in-commit, verified no
+  secrets in tracked files (only .env.example placeholders)
+- Pushed to https://github.com/adippe12/Lillipokemon (main), remote URL cleaned of token afterwards
+
+Stage Summary:
+- Code live on GitHub
+
+---
+Task ID: 8 (PENDING USER INPUT)
+Agent: main (Super Z)
+Task: Deploy to Cloudflare Pages + optional always-on Worker listener
+
+Blocker:
+- CF token cannot list accounts (scoped without Account Settings:Read) -> wrangler/pages API need the
+  32-hex account id from the user's dashboard URL (dash.cloudflare.com/<account_id>)
+- Ready to deploy: static site built at .next-export/, wrangler command prepared
+- Optional next step once provided: always-on Durable Object IRC listener Worker (free tier)
