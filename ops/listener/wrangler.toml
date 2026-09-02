@@ -1,0 +1,20 @@
+# LILLIPEDEX always-on Twitch chat listener (Cloudflare Worker + Durable Object).
+# Free plan: Durable Objects (SQLite-backed) + workers.dev subdomain, no credit card.
+name = "lillipokemon-listener"
+main = "src/worker.ts"
+compatibility_date = "2025-08-01"
+account_id = "0b4a39f7adcfd1320c96ad2d1ab944ed"
+workers_dev = true
+
+# These two values are PUBLIC BY DESIGN: they are the same anon key already
+# baked into the static site bundle. RLS + SECURITY DEFINER RPCs protect the DB.
+[vars]
+SUPABASE_URL = "https://wzptdnwcnshdxwzsjyzb.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cHRkbndjbnNoZHh3enNqeXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNTYxMzQsImV4cCI6MjA3NzczMjEzNH0.-TR5U-dfcRCzBjgmlRJuP_XO6eRwYPS151JAWKGR5y8"
+
+[durable_objects]
+bindings = [{ name = "LISTENER", class_name = "ChatListener" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatListener"]

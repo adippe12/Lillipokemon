@@ -1,7 +1,13 @@
 export const TWITCH_CHANNEL = "lillimon_";
 
 /** Fallback trigger words (server DB table `mon_triggers` is the source of truth). */
-export const DEFAULT_TRIGGERS = ["sillymon", "eepymon", "sleepymon"];
+export const DEFAULT_TRIGGERS = [
+  "sillymon",
+  "eepymon",
+  "sleepymon",
+  "leafymon",
+  "aquamon",
+];
 
 export const MAX_DESCRIPTION = 280;
 export const MAX_NICKNAME = 30;

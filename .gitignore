@@ -10,6 +10,7 @@ out/
 .env
 .env.local
 .env*.local
+ops/listener/.debug-token
 
 # sandbox / tooling artifacts (not part of the app)
 dev.log

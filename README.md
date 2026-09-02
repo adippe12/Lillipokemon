@@ -2,9 +2,9 @@
 
 A live, community-powered Pokedex for the Twitch channel **[lillimon_](https://twitch.tv/lillimon_)**.
 
-Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `eepymon`, `sleepymon_`, …), a new species entry is created on the Pokedex in real time. Viewers can then propose **descriptions** and **artwork** for each species — everything is **safety-filtered and human-approved** before it goes live.
+Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `eepymon`, `sleepymon_`, `leafymon`, `aquamon`, …), a new species entry is created on the Pokedex in real time. Viewers can then propose **descriptions** and **artwork** for each species — everything is **safety-filtered and human-approved** before it goes live.
 
-**100% free-forever stack:** Cloudflare Pages (static hosting) + Supabase free tier (database, auth, storage, realtime) + anonymous Twitch IRC (no API keys).
+**100% free-forever stack:** Cloudflare Pages (static hosting) + Cloudflare Worker/Durable Object (24/7 listener) + Supabase free tier (database, auth, storage, realtime) + anonymous Twitch IRC (no API keys).
 
 ## Live URLs
 
@@ -19,8 +19,11 @@ Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `ee
 ## How it works
 
 ```
-Twitch chat ──▶ browser IRC listener (wss://irc-ws.chat.twitch.tv, anonymous "justinfan")
-                     │  regex match:  ^|(non-word) sillymon|eepymon|sleepymon _* (word-end)
+Twitch chat ──▶ LISTENERS (any of, idempotent together):
+   (1) Cloudflare Durable Object  ops/listener/   — true 24/7, zero credentials
+   (2) GitHub Actions every 5 min .github/workflows/chat-listener.yml — stopgap
+   (3) any open browser tab       src/lib/use-twitch-chat.ts          — bonus eyes
+                     │  same regex core:  ^|(non-word) trigger _* (word-end)
                      ▼
              Supabase RPC discover_mon(name, spotted_by)   ← server validates trigger words,
                      │                                       dedups, rate-limits counters
@@ -34,8 +37,8 @@ viewers propose ────┤  (description text / image upload ≤2MB)
 channel admin ──▶ /admin console: approve or reject  ──▶ approved content published to entry
 ```
 
-- **Listener lives in the browser**: any visitor with the Pokedex open is a listener. Keep a tab open (or the stream's obs browser source) for 24/7 coverage. Discovery is idempotent — 100 viewers = still 1 species, counter bumps are rate-limited per user (90s).
-- **Trigger words** live in the `mon_triggers` table — add a new species trigger by inserting a word; the site picks it up on reload (default: `sillymon`, `eepymon`, `sleepymon`).
+- **Three listeners, one core** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7; the GitHub Actions workflow covers ~4 min out of every 5 until (1) is deployed; every open browser tab adds a bonus listener with live celebrations. Discovery is idempotent — 100 listeners = still 1 species, counter bumps are rate-limited (90s).
+- **Trigger words** live in the `mon_triggers` table — add a new species trigger by inserting a word; listeners refresh their word list every few minutes (default: `sillymon`, `eepymon`, `sleepymon`, `leafymon`, `aquamon`).
 - **Sprites**: species without approved art get a deterministic procedural pixel-mon generated from their name.
 
 ## Safety design
@@ -66,7 +69,13 @@ channel admin ──▶ /admin console: approve or reject  ──▶ approved co
        NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... bun run build:static
      # push .next-export to the gh-pages branch (add .nojekyll), then enable Pages on it
      ```
-4. (Optional) redirect the streamer's OBS / a spare device to the site so discovery runs 24/7.
+4. **Always-on listener** (`ops/listener/`): a Cloudflare Worker + Durable Object that keeps an anonymous IRC connection open 24/7 and reports spots to Supabase — no OBS browser source needed.
+     ```bash
+     scripts/deploy_listener.sh        # needs a CF token with Workers:Edit (+ Durable Objects)
+     # then set NEXT_PUBLIC_LISTENER_URL=https://lillipokemon-listener.<subdomain>.workers.dev
+     # and rebuild/redeploy the site to show the live "24/7 LISTENER" pill
+     ```
+   - Without it, `.github/workflows/chat-listener.yml` (public repo → free) runs a ~4-minute listener every 5 minutes as a stopgap.
 
 ## Dev
 

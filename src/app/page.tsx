@@ -11,6 +11,7 @@ import {
   formatNumber,
 } from "@/lib/mons";
 import { useTwitchChat, type ChatMessage } from "@/lib/use-twitch-chat";
+import { ListenerStatus } from "@/components/listener-status";
 import { MonCard } from "@/components/mon-card";
 import { MonDetailDialog } from "@/components/mon-detail";
 import confetti from "canvas-confetti";
@@ -278,6 +279,7 @@ export default function PokedexPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <ListenerStatus />
             <button
               onClick={toggleMute}
               aria-label={muted ? "Unmute discovery sounds" : "Mute discovery sounds"}
@@ -406,7 +408,7 @@ export default function PokedexPage() {
           <InfoCard
             icon={<Radio className="h-5 w-5 text-pokedex-cyan" />}
             title="LIVE LISTENING"
-            body={`This page is connected to #${TWITCH_CHANNEL}'s Twitch chat around the clock. Whenever someone types a creature's name — like "sillymon_" — the species is registered and its spotted counter grows.`}
+            body={`A 24/7 cloud listener watches #${TWITCH_CHANNEL}'s chat even when nobody has this site open. When someone types a creature's name — like "sillymon_" — the species is registered and its spotted counter grows. Opening this page adds a second pair of eyes, with live celebrations.`}
           />
           <InfoCard
             icon={<FlaskConical className="h-5 w-5 text-pokedex-yellow" />}

@@ -15,7 +15,7 @@ create table if not exists public.mon_triggers (
   added_at timestamptz not null default now()
 );
 insert into public.mon_triggers (word)
-values ('sillymon'), ('eepymon'), ('sleepymon')
+values ('sillymon'), ('eepymon'), ('sleepymon'), ('leafymon'), ('aquamon')
 on conflict (word) do nothing;
 
 -- 3) Species --------------------------------------------------
