@@ -177,3 +177,39 @@ Work Log:
 Stage Summary:
 - Both features live on https://lillipokemon.pages.dev/ + https://adippe12.github.io/Lillipokemon/
 - New migrations: ops/supabase/migration_0002_delete_mon.sql, migration_0003_triggers_realtime.sql
+
+---
+Task ID: 10
+Agent: main (Super Z)
+Task: Always-on chat listener + GitHub Pages removal
+
+Work Log:
+- Built shared listener core ops/listener/src/irc-core.ts (parseIrcLine, findTrigger, SpotReporter
+  w/ 10s dedupe, fetchTriggers, ircHandshake) importing canonicalize/buildTriggerRegex from src/lib/mons
+  -> single matching logic for browser + worker + GH runner
+- Cloudflare Worker + Durable Object: ops/listener/src/{worker,listener}.ts, wrangler.toml
+  (singleton DO, SQLite class migration, public vars SUPABASE_URL/ANON_KEY, workers_dev)
+  endpoints: /health (CORS *), /wake, /inject?token=DEBUG_TOKEN; 2-min ALARM watchdog reconnect,
+  3.5min keepalive PING, 5min trigger refresh, exponential backoff; dry-run bundle OK (10.8 KiB)
+- Unit tests ops/listener/test_core.ts: 32/32 PASS (regex parity w/ browser incl. negative cases)
+- E2E data path: seeded testmon99 -> discover_mon via anon REST (HTTP 204) -> row #003 created -> cleaned up
+- GH Actions stopgap .github/workflows/chat-listener.yml + ops/listener/src/gh_run.ts:
+  cron */5, LISTEN_MS 250s, concurrency cancel; run #1 (workflow_dispatch) SUCCESS:
+  connected to #lillimon_ whole window, 5 triggers loaded, 0 errors (channel was quiet)
+- NEW SPECIES: leafymon + aquamon inserted into mon_triggers (live DB), schema.sql seed +
+  DEFAULT_TRIGGERS updated; DB now: aquamon, eepymon, leafymon, sillymon, sleepymon
+- scripts/deploy_listener.sh written (deploys worker, sets DEBUG_TOKEN secret, wakes, health-checks)
+- OLD cfut_tSrH token = Pages-only (403 on workers/scripts, DO, subdomain)
+- NEW user token cfut_K4Vw...: verify=active but 403 on same-account workers endpoints AND pages,
+  /accounts=[] => scoped to a DIFFERENT CF account; deploy BLOCKED pending fixed token or account id
+- Site: ListenerStatus pill component (polls worker /health 30s, hidden if NEXT_PUBLIC_LISTENER_URL unset),
+  header integration, InfoCard copy now says 24/7 cloud listener; lint 0 errors; CF Pages redeployed
+- GITHUB PAGES REMOVED per user: GET /pages=404 (disabled), gh-pages branch deleted (204),
+  scripts/deploy_ghpages.sh deleted, README scrubbed; github.io URL now 404; site 200 on pages.dev only
+- Pushed 2de40b8 (listener + species); 91be39b (GH Pages removal) LOCAL-ONLY: GH token was only in
+  deleted deploy_ghpages.sh and shell var did not persist -> need user to re-send ghp_ token
+
+Stage Summary:
+- Listener stopgap LIVE (GH Actions every 5min); CF 24/7 worker ready-to-deploy (1 command once token fixed)
+- Hosting now CF-ONLY (pages.dev). Unpushed: 91be39b. Need: CF token w/ Workers:Edit on account
+  0b4a39f7adcfd1320c96ad2d1ab944ed OR account id of the new token; GH token re-send for final push
