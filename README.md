@@ -6,6 +6,14 @@ Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `ee
 
 **100% free-forever stack:** Cloudflare Pages (static hosting) + Supabase free tier (database, auth, storage, realtime) + anonymous Twitch IRC (no API keys).
 
+## Live URLs
+
+| Deployment | URL |
+|---|---|
+| Cloudflare Pages (primary) | https://lillipokemon.pages.dev/ |
+| GitHub Pages (mirror) | https://adippe12.github.io/Lillipokemon/ |
+| Team console | `/admin/` on either host |
+
 ---
 
 ## How it works
@@ -46,11 +54,18 @@ channel admin ──▶ /admin console: approve or reject  ──▶ approved co
 
 1. **Supabase**: create a project → run `ops/supabase/schema.sql` in the SQL editor.
 2. Create an admin: Auth → add user, then `insert into admins (email) values ('your@email');`
-3. **Hosting**: any static host works. For Cloudflare Pages:
-   ```bash
-   CF_EXPORT=1 NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npx next build
-   npx wrangler pages deploy .next-export
-   ```
+3. **Hosting**: any static host works.
+   - Cloudflare Pages (served at root):
+     ```bash
+     CF_EXPORT=1 NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... bun run build:static
+     npx wrangler pages deploy .next-export
+     ```
+   - GitHub Pages (served under `/<repo>` → needs basePath):
+     ```bash
+     CF_EXPORT=1 BASE_PATH=/Lillipokemon NEXT_PUBLIC_BASE_PATH=/Lillipokemon \
+       NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... bun run build:static
+     # push .next-export to the gh-pages branch (add .nojekyll), then enable Pages on it
+     ```
 4. (Optional) redirect the streamer's OBS / a spare device to the site so discovery runs 24/7.
 
 ## Dev
