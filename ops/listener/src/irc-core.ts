@@ -62,16 +62,18 @@ export type SpotReporterStats = {
 
 /**
  * Reports spotted species to Supabase (discover_mon RPC, anon key — the RPC is
- * SECURITY DEFINER and validates every input server-side; anon is how the
- * browser calls it too).
+ * SECURITY DEFINER and validates every input server-side). This worker is the
+ * SINGLE writer to the dex; browser tabs are read-only mirrors.
  *
- * Keeps a tiny in-memory 10s per-species dedupe so a chat spamming the same
- * word doesn't spam the RPC (the DB has its own 90s count debounce).
+ * Keeps a tiny in-memory 10s per (species, author) dedupe so a chat spamming
+ * the same word doesn't spam the RPC — keyed by author too, so two different
+ * people spotting the same species in quick succession BOTH reach the DB
+ * (which applies its own 30s per-(mon, author) pair debounce).
  */
 export class SpotReporter {
   private url: string;
   private anonKey: string;
-  private lastSent = new Map<string, number>();
+  private lastSent = new Map<string, number>(); // key: "species:author"
   private stats: SpotReporterStats = { spotCalls: 0, spotErrors: 0, deduped: 0 };
   private log: (...args: unknown[]) => void;
 
@@ -92,12 +94,13 @@ export class SpotReporter {
   /** Returns true if a discover_mon call was actually attempted and succeeded. */
   async report(canonical: string, by: string): Promise<boolean> {
     const now = Date.now();
-    const last = this.lastSent.get(canonical);
+    const key = `${canonical}:${by}`;
+    const last = this.lastSent.get(key);
     if (last !== undefined && now - last < 10_000) {
       this.stats.deduped++;
       return false;
     }
-    this.lastSent.set(canonical, now);
+    this.lastSent.set(key, now);
     // opportunistic pruning
     if (this.lastSent.size > 64) {
       for (const [k, t] of this.lastSent) if (now - t > 30_000) this.lastSent.delete(k);

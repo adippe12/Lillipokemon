@@ -19,14 +19,14 @@ Any time someone types a word that **ends in `mon`** in chat (`sillymon`, `silly
 ## How it works
 
 ```
-Twitch chat ──▶ LISTENERS (any of, idempotent together):
-   (1) Cloudflare Durable Object  ops/listener/   — true 24/7, zero credentials
-   (2) any open browser tab       src/lib/use-twitch-chat.ts — bonus eyes
-                     │  same regex core:  ^|(non-word) trigger / *mon word _* (word-end)
-                     ▼
-             Supabase RPC discover_mon(name, spotted_by)   ← server validates trigger words,
-                     │                                       dedups, rate-limits counters
-                     ▼
+Twitch chat ──▶ SINGLE WRITER: Cloudflare Durable Object  ops/listener/  — true 24/7, zero credentials
+   │  same regex core:  ^|(non-word) trigger / *mon word _* (word-end)
+   │  (open browser tabs mirror the chat READ-ONLY: live toasts + "scanned by you" counter,
+   │   they never write to the database)
+   ▼
+Supabase RPC discover_mon(name, spotted_by)   ← server validates trigger words,
+   │                                           debounces per (mon, author) pair (30s)
+   ▼
              mons table ──▶ Supabase Realtime ──▶ every open Pokedex page updates live
                      │
 viewers propose ────┤  (description text / image upload ≤2MB)
@@ -36,7 +36,7 @@ viewers propose ────┤  (description text / image upload ≤2MB)
 channel admin ──▶ /admin console: approve or reject  ──▶ approved content published to entry
 ```
 
-- **Two listeners, one core** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7; every open browser tab adds a bonus listener with live celebrations. Discovery is idempotent — 100 listeners = still 1 species, counter bumps are rate-limited (90s).
+- **One writer, many readers** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7 and is the only thing that writes to the dex. Browser tabs mirror the same chat read-only for instant local feedback (toasts, CHAT BUZZ, the "scanned by you" counter). Spot counting is debounced per **(mon, author) pair** with a 30-second window — the same person re-spotting the same species is a no-op, different people always count (see `ops/supabase/migration_0005_pair_debounce.sql`).
 - **Open matching**: ANY chat word ending in `mon` (min 2 chars before it) discovers a species. Plain words that happen to end in `mon` ("demon", "pokemon", "lemon", …) live in the `reserved_words` table and are ignored; the `banned_words` profanity filter always applies. The five **featured trigger words** (chips in the hero) stay admin-curated in `mon_triggers` — they also allow custom word shapes. Listeners refresh both lists every few minutes.
 - **Sprites**: species without approved art get a deterministic procedural pixel-mon generated from their name.
 

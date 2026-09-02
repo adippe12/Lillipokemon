@@ -100,10 +100,11 @@ const reporter = new SpotReporter({
 check("report ok", (await reporter.report("sillymon", "TestUser")) === true);
 check("report dedupes within 10s", (await reporter.report("sillymon", "TestUser")) === false);
 check("different species not deduped", (await reporter.report("eepymon", "OtherUser")) === true);
+check("same species different author not deduped", (await reporter.report("sillymon", "SomeoneElse")) === true);
 check("rpc url", calls[0]?.url === "https://wzptdnwcnshdxwzsjyzb.supabase.co/rest/v1/rpc/discover_mon", calls[0]?.url);
 check("rpc body", JSON.stringify(calls[1]?.body) === JSON.stringify({ p_name: "eepymon", p_by: "OtherUser" }), calls[1]?.body);
 const stats = reporter.getStats();
-check("stats", stats.spotCalls === 2 && stats.deduped === 1 && stats.spotErrors === 0, stats);
+check("stats", stats.spotCalls === 3 && stats.deduped === 1 && stats.spotErrors === 0, stats);
 
 // error path
 g.fetch = (async () => new Response("{}", { status: 400 })) as typeof fetch;

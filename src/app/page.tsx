@@ -369,22 +369,18 @@ export default function PokedexPage() {
     };
   }, [loadMons, loadPending, showToast, addFeed]);
 
-  // ---- twitch chat discovery ----
+  // ---- twitch chat mirror (READ-ONLY) ----
+  // The 24/7 cloud worker is the SINGLE writer to Supabase. The browser only
+  // mirrors the chat locally: every read message feeds the "scanned by you"
+  // pill (inside useTwitchChat) and a local match gives instant CHAT BUZZ
+  // feedback — deduped against the realtime UPDATE that arrives a moment
+  // later from the worker's report (same event id, 25s window).
   const handleMatch = useCallback(
-    async (msg: ChatMessage, canonical: string) => {
-      if (!supabaseConfigured) return;
+    (msg: ChatMessage, canonical: string) => {
       const by = msg.displayName || msg.user;
-      const { error } = await supabase.rpc("discover_mon", {
-        p_name: canonical,
-        p_by: by,
-      });
-      if (!error) {
-        // instant feedback while the DB roundtrip catches up (deduped vs realtime UPDATE)
-        addFeed({ id: `spot:${canonical}:${by}`, kind: "spot", name: canonical, by, ts: Date.now() });
-        void loadMons();
-      }
+      addFeed({ id: `spot:${canonical}:${by}`, kind: "spot", name: canonical, by, ts: Date.now() });
     },
-    [loadMons, addFeed]
+    [addFeed]
   );
 
   const { status, scanned } = useTwitchChat({
