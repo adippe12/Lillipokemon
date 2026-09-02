@@ -10,9 +10,9 @@ Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `ee
 
 | Deployment | URL |
 |---|---|
-| Cloudflare Pages (primary) | https://lillipokemon.pages.dev/ |
-| GitHub Pages (mirror) | https://adippe12.github.io/Lillipokemon/ |
-| Team console | `/admin/` on either host |
+| Cloudflare Pages (site) | https://lillipokemon.pages.dev/ |
+| Cloudflare Workers (24/7 listener) | deployed via `scripts/deploy_listener.sh` |
+| Team console | https://lillipokemon.pages.dev/admin/ |
 
 ---
 
@@ -57,17 +57,10 @@ channel admin ──▶ /admin console: approve or reject  ──▶ approved co
 
 1. **Supabase**: create a project → run `ops/supabase/schema.sql` in the SQL editor.
 2. Create an admin: Auth → add user, then `insert into admins (email) values ('your@email');`
-3. **Hosting**: any static host works.
-   - Cloudflare Pages (served at root):
+3. **Hosting (Cloudflare Pages only)**:
      ```bash
      CF_EXPORT=1 NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... bun run build:static
-     npx wrangler pages deploy .next-export
-     ```
-   - GitHub Pages (served under `/<repo>` → needs basePath):
-     ```bash
-     CF_EXPORT=1 BASE_PATH=/Lillipokemon NEXT_PUBLIC_BASE_PATH=/Lillipokemon \
-       NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... bun run build:static
-     # push .next-export to the gh-pages branch (add .nojekyll), then enable Pages on it
+     npx wrangler pages deploy .next-export --project-name lillipokemon
      ```
 4. **Always-on listener** (`ops/listener/`): a Cloudflare Worker + Durable Object that keeps an anonymous IRC connection open 24/7 and reports spots to Supabase — no OBS browser source needed.
      ```bash
