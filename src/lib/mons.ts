@@ -5,8 +5,6 @@ export const DEFAULT_TRIGGERS = [
   "sillymon",
   "eepymon",
   "sleepymon",
-  "leafymon",
-  "aquamon",
 ];
 
 /**

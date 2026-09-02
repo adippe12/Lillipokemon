@@ -26,7 +26,7 @@ const STEPS = [
   {
     icon: <MessageCircle className="h-5 w-5 text-primary" />,
     title: "Type it in chat",
-    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: blobmon, teacupmon, grumpymon… whatevermon! The classic friends — sillymon, eepymon, sleepymon, leafymon and aquamon — work too.`,
+    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: blobmon, teacupmon, grumpymon… whatevermon! The classic friends — sillymon, eepymon and sleepymon — work too.`,
   },
   {
     icon: <Radio className="h-5 w-5 text-pokedex-cyan" />,
