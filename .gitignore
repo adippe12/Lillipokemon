@@ -1,0 +1,31 @@
+# deps
+node_modules/
+
+# build artifacts
+.next/
+.next-export/
+out/
+
+# env & secrets
+.env
+.env.local
+.env*.local
+
+# sandbox / tooling artifacts (not part of the app)
+dev.log
+server.log
+db/
+prisma/
+tests/
+examples/
+mini-services/
+skills/
+scripts/
+download/
+upload/
+agent-ctx/
+.zscripts/
+Caddyfile
+worklog.md
+components.json
+.env

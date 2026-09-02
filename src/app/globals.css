@@ -1,0 +1,323 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans-body);
+  --font-mono: var(--font-lcd);
+  --font-pixel: var(--font-pixel);
+  --font-lcd: var(--font-lcd);
+  --font-body: var(--font-sans-body);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-pokedex-red: var(--pokedex-red);
+  --color-pokedex-dark-red: var(--pokedex-dark-red);
+  --color-pokedex-yellow: var(--pokedex-yellow);
+  --color-pokedex-cyan: var(--pokedex-cyan);
+  --color-pokedex-cream: var(--pokedex-cream);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  --pokedex-red: #e3350d;
+  --pokedex-dark-red: #a91e0b;
+  --pokedex-yellow: #ffcb05;
+  --pokedex-cyan: #4fd8e8;
+  --pokedex-cream: #fff8e7;
+
+  --background: #0e0e16;
+  --foreground: #f2ede2;
+  --card: #16162299;
+  --card-foreground: #f2ede2;
+  --popover: #171724;
+  --popover-foreground: #f2ede2;
+  --primary: #e3350d;
+  --primary-foreground: #fff4ec;
+  --secondary: #23233499;
+  --secondary-foreground: #f2ede2;
+  --muted: #1d1d2c;
+  --muted-foreground: #9a97a8;
+  --accent: #2a2a3f;
+  --accent-foreground: #ffcb05;
+  --destructive: #e5484d;
+  --border: #ffffff14;
+  --input: #ffffff1a;
+  --ring: #e3350d;
+  --chart-1: #e3350d;
+  --chart-2: #ffcb05;
+  --chart-3: #4fd8e8;
+  --chart-4: #8bd450;
+  --chart-5: #f06aa7;
+  --sidebar: #12121c;
+  --sidebar-foreground: #f2ede2;
+  --sidebar-primary: #e3350d;
+  --sidebar-primary-foreground: #fff4ec;
+  --sidebar-accent: #2a2a3f;
+  --sidebar-accent-foreground: #ffcb05;
+  --sidebar-border: #ffffff14;
+  --sidebar-ring: #e3350d;
+}
+
+.dark {
+  --background: #0e0e16;
+  --foreground: #f2ede2;
+  --card: #16162299;
+  --card-foreground: #f2ede2;
+  --popover: #171724;
+  --popover-foreground: #f2ede2;
+  --primary: #e3350d;
+  --primary-foreground: #fff4ec;
+  --secondary: #23233499;
+  --secondary-foreground: #f2ede2;
+  --muted: #1d1d2c;
+  --muted-foreground: #9a97a8;
+  --accent: #2a2a3f;
+  --accent-foreground: #ffcb05;
+  --destructive: #e5484d;
+  --border: #ffffff14;
+  --input: #ffffff1a;
+  --ring: #e3350d;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(1200px 500px at 80% -10%, #e3350d14, transparent),
+      radial-gradient(900px 420px at 5% 110%, #4fd8e80d, transparent);
+    background-attachment: fixed;
+  }
+}
+
+/* ---------- Lillipokedex custom utilities ---------- */
+
+.font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.02em;
+}
+.font-lcd {
+  font-family: var(--font-lcd);
+  letter-spacing: 0.04em;
+}
+.font-body {
+  font-family: var(--font-sans-body);
+}
+
+/* CRT screen with scanlines + glow */
+.crt-screen {
+  position: relative;
+  background:
+    linear-gradient(180deg, #101a1f 0%, #0c1216 100%);
+  box-shadow:
+    inset 0 0 40px #000000aa,
+    inset 0 0 6px #4fd8e833,
+    0 0 0 3px #1c1c2c,
+    0 10px 30px #00000066;
+  overflow: hidden;
+}
+.crt-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    #00000026 0px,
+    #00000026 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 5;
+}
+.crt-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, #4fd8e814 50%, transparent 60%);
+  animation: crt-sweep 7s linear infinite;
+  z-index: 6;
+}
+
+@keyframes crt-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* Radar scanning line inside the hero LCD */
+.radar-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4fd8e8cc, transparent);
+  filter: drop-shadow(0 0 6px #4fd8e8);
+  animation: radar 3.2s ease-in-out infinite;
+  opacity: 0.75;
+}
+@keyframes radar {
+  0%,
+  100% {
+    top: 8%;
+  }
+  50% {
+    top: 88%;
+  }
+}
+
+/* live pulse dot */
+.pulse-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #35e065;
+  box-shadow: 0 0 0 0 #35e065aa;
+  animation: pulse-dot 1.8s ease-out infinite;
+}
+.pulse-dot.err {
+  background: #e5484d;
+  box-shadow: 0 0 0 0 #e5484daa;
+}
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 0.85;
+  }
+}
+
+/* sprite idle float */
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.floaty {
+  animation: floaty 2.6s ease-in-out infinite;
+  image-rendering: pixelated;
+}
+
+/* pixel-styled card border */
+.pixel-card {
+  border: 2px solid #ffffff1a;
+  box-shadow:
+    0 0 0 2px #0e0e16,
+    0 0 0 4px #ffffff0d,
+    0 8px 24px #00000059;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.pixel-card:hover {
+  transform: translateY(-3px);
+  border-color: #e3350d66;
+  box-shadow:
+    0 0 0 2px #0e0e16,
+    0 0 0 4px #e3350d33,
+    0 14px 30px #00000080;
+}
+
+/* chunky pokedex hinge bar */
+.hinge-bar {
+  background: linear-gradient(180deg, #e3350d 0%, #a91e0b 100%);
+  box-shadow: inset 0 -3px 0 #00000040, inset 0 3px 0 #ff6a4db3;
+}
+
+/* LED lights (classic pokedex corner) */
+.led {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff40;
+}
+.led-blue {
+  background: radial-gradient(circle at 35% 30%, #bfefff, #3aa8ff 55%, #1d5fbf);
+  box-shadow: 0 0 10px #3aa8ff88;
+}
+.led-red {
+  background: radial-gradient(circle at 35% 30%, #ffd2c4, #ff5030 55%, #b91c0c);
+  box-shadow: 0 0 10px #ff503088;
+}
+.led-yellow {
+  background: radial-gradient(circle at 35% 30%, #fff3b0, #ffcb05 55%, #c79100);
+  box-shadow: 0 0 10px #ffcb0588;
+}
+.led-green {
+  background: radial-gradient(circle at 35% 30%, #d2ffd2, #35e065 55%, #128a33);
+  box-shadow: 0 0 10px #35e06588;
+}
+
+/* LCD text color */
+.lcd-text {
+  color: #7ff3e3;
+  text-shadow: 0 0 8px #4fd8e866;
+}
+
+/* thin custom scrollbars */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #12121c;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2a2a3f;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #3a3a55;
+}
