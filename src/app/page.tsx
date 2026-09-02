@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import { BASE_PATH } from "@/lib/base-path";
 import {
   type Mon,
   TWITCH_CHANNEL,
@@ -441,7 +440,7 @@ export default function PokedexPage() {
                 Twitch channel <ExternalLink className="h-3 w-3" />
               </a>
               <Button asChild variant="ghost" className="h-auto justify-start p-0 font-lcd text-sm text-muted-foreground hover:bg-transparent hover:text-foreground">
-                <a href={`${BASE_PATH}/admin/`} className="flex items-center gap-1.5">
+                <a href="/admin/" className="flex items-center gap-1.5">
                   Team login <ExternalLink className="h-3 w-3" />
                 </a>
               </Button>

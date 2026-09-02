@@ -21,8 +21,7 @@ Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `ee
 ```
 Twitch chat ──▶ LISTENERS (any of, idempotent together):
    (1) Cloudflare Durable Object  ops/listener/   — true 24/7, zero credentials
-   (2) GitHub Actions every 5 min .github/workflows/chat-listener.yml — stopgap
-   (3) any open browser tab       src/lib/use-twitch-chat.ts          — bonus eyes
+   (2) any open browser tab       src/lib/use-twitch-chat.ts — bonus eyes
                      │  same regex core:  ^|(non-word) trigger _* (word-end)
                      ▼
              Supabase RPC discover_mon(name, spotted_by)   ← server validates trigger words,
@@ -37,7 +36,7 @@ viewers propose ────┤  (description text / image upload ≤2MB)
 channel admin ──▶ /admin console: approve or reject  ──▶ approved content published to entry
 ```
 
-- **Three listeners, one core** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7; the GitHub Actions workflow covers ~4 min out of every 5 until (1) is deployed; every open browser tab adds a bonus listener with live celebrations. Discovery is idempotent — 100 listeners = still 1 species, counter bumps are rate-limited (90s).
+- **Two listeners, one core** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7; every open browser tab adds a bonus listener with live celebrations. Discovery is idempotent — 100 listeners = still 1 species, counter bumps are rate-limited (90s).
 - **Trigger words** live in the `mon_triggers` table — add a new species trigger by inserting a word; listeners refresh their word list every few minutes (default: `sillymon`, `eepymon`, `sleepymon`, `leafymon`, `aquamon`).
 - **Sprites**: species without approved art get a deterministic procedural pixel-mon generated from their name.
 
@@ -68,7 +67,6 @@ channel admin ──▶ /admin console: approve or reject  ──▶ approved co
      # then set NEXT_PUBLIC_LISTENER_URL=https://lillipokemon-listener.<subdomain>.workers.dev
      # and rebuild/redeploy the site to show the live "24/7 LISTENER" pill
      ```
-   - Without it, `.github/workflows/chat-listener.yml` (public repo → free) runs a ~4-minute listener every 5 minutes as a stopgap.
 
 ## Dev
 

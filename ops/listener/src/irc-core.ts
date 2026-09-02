@@ -3,7 +3,6 @@
  *
  * Used by:
  *   - ops/listener/src/listener.ts  (Cloudflare Worker + Durable Object, 24/7)
- *   - ops/listener/src/gh_run.ts    (GitHub Actions stopgap listener)
  *
  * The browser listener (src/lib/use-twitch-chat.ts) implements the SAME
  * matching rules so every runtime discovers the same species.
