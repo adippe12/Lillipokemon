@@ -147,3 +147,33 @@ Stage Summary:
   https://adippe12.github.io/Lillipokemon/ (mirror, /Lillipokemon basePath). Same Supabase backend.
 - Redeploy: scripts/deploy_cfpages.sh (CF) or scripts/deploy_ghpages.sh after basePath rebuild (GH)
 
+
+---
+Task ID: 9
+Agent: main (Super Z)
+Task: Remove dev/stack references from public UI + admin species removal
+
+Work Log:
+- UI scrub: footer now only links Twitch channel + Team login (removed Source code / Supabase docs /
+  Cloudflare Pages / Twitch IRC docs links + Github icon import); stack line replaced with
+  "A living encyclopedia the whole chat builds together"; error strings de-jargoned
+  ("Database not connected"/"Supabase env missing"/"Database not configured" -> friendly wording,
+  raw errors to console only)
+- Migration 0002: delete_mon(p_mon_id) RPC (SECURITY DEFINER, admin-gated via admins.email=auth.email):
+  deletes storage pending/{name}/ + approved/{name}/ objects (best-effort), mons row (proposals FK
+  cascade), retires trigger word. Grant to authenticated. Anon call verified rejected ("Not authorized")
+- Migration 0003: supabase_realtime publication + mon_triggers (chips + chat regex update live)
+- Admin UI: "Remove species" destructive button per species row + AlertDialog confirm
+  ("Delete forever"), removeMon(): client-side storage.list+remove of both prefixes then RPC
+- Home page: realtime DELETE handler for mons (removes card, pending count, selected dialog) +
+  INSERT/DELETE handlers for mon_triggers (chips live add/remove)
+- eslint.config.mjs ignores .next-export/ + scripts/ + ops/ (was linting minified chunks)
+- E2E test in dev: seeded trigger testmon99 -> discovered #002 -> uploaded real png + pending proposal
+  -> admin removed it -> DB verified 0 rows in mons/proposals/mon_triggers/storage; home card vanished
+  via realtime without reload; trigger chip add/remove verified live via SQL insert/delete
+- Committed to main, deployed BOTH hosts (CF root build + GH Pages basePath build), production
+  verified: clean footer, Remove species dialog renders on lillipokemon.pages.dev, zero console errors
+
+Stage Summary:
+- Both features live on https://lillipokemon.pages.dev/ + https://adippe12.github.io/Lillipokemon/
+- New migrations: ops/supabase/migration_0002_delete_mon.sql, migration_0003_triggers_realtime.sql
