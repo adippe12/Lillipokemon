@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Heart, Sparkles } from "lucide-react";
-import { displayName, formatNumber, relativeTime } from "@/lib/mons";
+import { displayName, relativeTime } from "@/lib/mons";
 import { cn } from "@/lib/utils";
 
 export type FeedEvent = {
@@ -14,10 +14,11 @@ export type FeedEvent = {
 };
 
 /**
- * "CHAT BUZZ" — a compact realtime feed of what chat is doing right now:
- * new friends discovered + spotting sprees. Rendered in a soft cloud card
- * next to the hero. Self-contained: re-renders every 10s so relative
- * timestamps stay fresh.
+ * "CHAT BUZZ" — a slim horizontal ticker of what chat is doing right now:
+ * new friends discovered + spotting sprees, as cute scrollable pills.
+ * Sits between the hero and the dex grid without stealing the spotlight:
+ * the mons stay the focus of the page. Self-contained: re-renders every
+ * 10s so relative timestamps stay fresh.
  */
 export function LiveWire({
   events,
@@ -33,68 +34,62 @@ export function LiveWire({
     return () => clearInterval(timer);
   }, []);
 
-  const visible = events.slice(0, 9);
+  const visible = events.slice(0, 12);
 
   return (
     <aside
       aria-label="Live activity feed"
-      className={cn("candy-card flex flex-col overflow-hidden", className)}
+      className={cn("candy-card flex w-full items-stretch overflow-hidden", className)}
     >
-      <div className="flex items-center justify-between border-b border-border bg-secondary/70 px-4 py-3">
-        <h3 className="font-display flex items-center gap-2 text-sm font-bold text-primary">
-          <span className="pulse-dot" aria-hidden />
-          CHAT BUZZ
+      {/* fixed label chip */}
+      <div className="flex shrink-0 items-center gap-2 self-stretch rounded-l-[1.3rem] border-r border-border bg-secondary/80 px-3.5 py-2.5 sm:px-4">
+        <span className="pulse-dot" aria-hidden />
+        <h3 className="font-display text-[13px] font-bold whitespace-nowrap text-primary">
+          CHAT&nbsp;BUZZ
         </h3>
-        <span className="font-soft text-xs font-bold text-muted-foreground">
-          {events.length > 0 ? `${formatNumber(events.length)} events` : "standby"}
-        </span>
       </div>
 
-      <div className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      {/* scrollable pill track */}
+      <div
+        className="buzz-track flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-2.5 py-2"
+        role="log"
+      >
         {visible.length === 0 ? (
-          <div className="flex h-full min-h-24 flex-col items-center justify-center gap-2 py-6 text-center">
-            <span className="font-soft text-sm font-bold text-muted-foreground">
-              waiting for chat chatter
-              <span className="caret ml-1" aria-hidden />
-            </span>
-            <p className="max-w-[24ch] text-xs leading-relaxed text-muted-foreground/80">
-              new friends and spotting sprees land here in real time
-            </p>
-          </div>
+          <span className="font-soft flex items-center gap-1.5 px-1 text-[13px] font-semibold whitespace-nowrap text-muted-foreground">
+            waiting for chat chatter
+            <span className="caret" aria-hidden />
+          </span>
         ) : (
           visible.map((ev) => (
-            <div
+            <span
               key={ev.id}
-              role="log"
-              className="anim-feed flex items-center gap-2.5 rounded-xl border border-transparent px-2 py-1.5 transition hover:border-border hover:bg-secondary/60"
+              className="anim-feed font-soft flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2.5 pl-1.5 text-[13px] leading-none font-semibold whitespace-nowrap"
             >
               <span
                 className={cn(
-                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                  "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full",
                   ev.kind === "new" ? "bg-primary/15 text-primary" : "bg-[#8ecdf7]/25 text-pokedex-cyan"
                 )}
                 aria-hidden
               >
-                {ev.kind === "new" ? <Sparkles className="h-3.5 w-3.5" /> : <Heart className="h-3.5 w-3.5" />}
+                {ev.kind === "new" ? <Sparkles className="h-3 w-3" /> : <Heart className="h-3 w-3" />}
               </span>
-              <div className="min-w-0 flex-1 leading-tight">
-                <p className="font-display truncate text-[10px] font-bold uppercase tracking-wide">
-                  <span className={ev.kind === "new" ? "text-primary" : "text-pokedex-cyan"}>
-                    {ev.kind === "new" ? "NEW FRIEND" : "SPOTTED"}
-                  </span>
-                </p>
-                <p className="font-soft truncate text-[15px] font-bold text-foreground">
-                  {displayName(ev.name)}
-                  {ev.by && <span className="font-semibold text-muted-foreground"> · @{ev.by}</span>}
-                </p>
-              </div>
+              <span className={cn("font-bold", ev.kind === "new" ? "text-primary" : "text-pokedex-cyan")}>
+                {ev.kind === "new" ? "NEW" : "SPOT"}
+              </span>
+              <span className="max-w-[13ch] truncate font-bold text-foreground sm:max-w-[18ch]">
+                {displayName(ev.name)}
+              </span>
+              {ev.by && (
+                <span className="max-w-[10ch] truncate text-muted-foreground sm:max-w-[14ch]">@{ev.by}</span>
+              )}
               <time
-                className="font-soft shrink-0 self-start pt-0.5 text-xs font-semibold text-muted-foreground"
+                className="text-muted-foreground/80"
                 dateTime={new Date(ev.ts).toISOString()}
               >
                 {relativeTime(new Date(ev.ts).toISOString(), now)}
               </time>
-            </div>
+            </span>
           ))
         )}
       </div>

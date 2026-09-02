@@ -9,6 +9,7 @@ import {
   DEFAULT_RESERVED,
   displayName,
   formatNumber,
+  relativeTime,
 } from "@/lib/mons";
 import { useTwitchChat, type ChatMessage } from "@/lib/use-twitch-chat";
 import { ListenerStatus } from "@/components/listener-status";
@@ -32,10 +33,10 @@ import {
   ExternalLink,
   FlaskConical,
   Heart,
+  Info,
   Radio,
   RotateCcw,
   Search,
-  ShieldCheck,
   Sparkles,
   Volume2,
   VolumeX,
@@ -493,7 +494,7 @@ export default function PokedexPage() {
     <div className="flex min-h-screen flex-col">
       {/* ---------- header ---------- */}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 shadow-[0_2px_18px_rgba(240,107,168,0.07)] backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
           <a
             href="/"
             className="flex items-center gap-2.5 rounded-full transition hover:opacity-90"
@@ -508,8 +509,16 @@ export default function PokedexPage() {
               LILLI<span className="text-primary">PEDEX</span>
             </h1>
           </a>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <ListenerStatus />
+            <a
+              href="/info/"
+              aria-label="How this dex works"
+              title="How this dex works"
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+            >
+              <Info className="h-4 w-4" />
+            </a>
             <button
               onClick={toggleMute}
               aria-label={muted ? "Unmute discovery sounds" : "Mute discovery sounds"}
@@ -522,7 +531,7 @@ export default function PokedexPage() {
               href={`https://twitch.tv/${TWITCH_CHANNEL}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full border border-primary/25 bg-card px-3 py-1.5 shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/50"
+              className="flex items-center gap-2 rounded-full border border-primary/25 bg-card px-2.5 py-1.5 shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/50 sm:px-3"
             >
               <span className={`pulse-dot ${status === "live" ? "" : "err"}`} />
               <span className="font-soft hidden text-sm font-bold text-foreground sm:inline">{statusLabel}</span>
@@ -552,9 +561,9 @@ export default function PokedexPage() {
           </Alert>
         )}
 
-        {/* hero + live wire */}
-        <section className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="cloud-panel relative rounded-3xl px-5 py-8 sm:px-8 sm:py-10">
+        {/* hero — compact: the mons are the stars */}
+        <section className="mb-4">
+          <div className="cloud-panel relative rounded-3xl px-5 py-6 sm:px-8 sm:py-8">
             {/* floating pastel bubbles */}
             <span className="bubble bubble-pink bob" style={{ width: 92, height: 92, top: -26, right: 70 }} aria-hidden />
             <span className="bubble bubble-lavender bob" style={{ width: 54, height: 54, top: 44, right: -12, animationDelay: "1.2s" }} aria-hidden />
@@ -562,21 +571,20 @@ export default function PokedexPage() {
             <span className="bubble bubble-butter bob" style={{ width: 30, height: 30, top: 14, left: 150, animationDelay: "0.6s" }} aria-hidden />
             <span className="bubble bubble-sky bob" style={{ width: 48, height: 48, bottom: -14, right: 210, animationDelay: "2.6s" }} aria-hidden />
             <div className="relative z-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-2.5">
                 <p className="font-soft text-sm font-bold text-primary">
                   <Sparkles className="mr-1 inline h-4 w-4" aria-hidden />
                   listening to twitch.tv/{TWITCH_CHANNEL} chat…
                 </p>
                 <h2 className="font-display max-w-xl text-xl font-extrabold leading-snug text-foreground sm:text-2xl">
                   Every little <span className="text-primary">mon</span> typed in chat
-                  <br />
-                  becomes a new friend here
+                  <br className="hidden sm:block" /> becomes a new friend here
                 </h2>
                 <p className="font-soft text-base font-semibold text-muted-foreground" aria-hidden>
                   try: <span className="font-bold text-primary">{typed}</span>
                   <span className="caret" />
                 </p>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <Badge className="rounded-full border border-primary/40 bg-primary/15 font-soft text-[13px] font-bold text-primary">
                     any word ending in &ldquo;mon&rdquo;
                   </Badge>
@@ -594,35 +602,48 @@ export default function PokedexPage() {
                   )}
                 </div>
               </div>
-              <div className="grid w-full grid-cols-3 gap-3 sm:w-auto">
-                <Stat label="friends" value={loading ? null : stats.species} />
-                <Stat label="sightings" value={loading ? null : stats.spots} />
-                <Stat label="in review" value={loading ? null : stats.inReview} />
-              </div>
+              <SpotlightMon mon={loading ? null : latest} onOpen={openMon} />
             </div>
-            {latest && (
-              <div className="relative z-10 mt-6 flex flex-wrap items-center gap-2 font-soft text-sm font-semibold text-muted-foreground">
-                <Radio className="h-4 w-4 text-primary" />
-                latest activity:
-                <span className="font-bold text-foreground">{displayName(latest.name)}</span>
-                {latest.last_spotted_by && <span>spotted by @{latest.last_spotted_by}</span>}
-                <span className="font-bold text-pokedex-cyan">· {formatNumber(scanned)} chat messages scanned by you</span>
-              </div>
-            )}
           </div>
+        </section>
 
-          <LiveWire events={feed} className="min-h-44" />
+        {/* stat pills + chat buzz ticker */}
+        <section aria-label="Dex stats and live activity" className="mb-6 space-y-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <StatPill
+              icon={<Heart className="h-4 w-4 text-primary" />}
+              label="friends"
+              value={loading ? null : stats.species}
+            />
+            <StatPill
+              icon={<Sparkles className="h-4 w-4 text-pokedex-yellow" />}
+              label="sightings"
+              value={loading ? null : stats.spots}
+            />
+            <StatPill
+              icon={<FlaskConical className="h-4 w-4 text-[#8a6fd1]" />}
+              label="in review"
+              value={loading ? null : stats.inReview}
+            />
+            <StatPill
+              icon={<Radio className="h-4 w-4 text-pokedex-cyan" />}
+              label="scanned by you"
+              value={scanned}
+              accent="cyan"
+            />
+          </div>
+          <LiveWire events={feed} />
         </section>
 
         {/* discovery toast */}
         {toast && (
-          <div className="anim-toast fixed bottom-6 z-50" role="status" aria-live="polite">
+          <div className="anim-toast fixed bottom-6 z-50 w-max max-w-[calc(100vw-2.5rem)]" role="status" aria-live="polite">
             <button
               onClick={() => {
                 if (toastMon) openMon(toastMon.id);
                 setToast(null);
               }}
-              className="candy-card relative flex items-center gap-3 overflow-hidden rounded-2xl bg-popover px-5 py-4 pr-7 text-left"
+              className="candy-card relative flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-popover px-5 py-4 pr-7 text-left"
             >
               <div
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.15)]"
@@ -648,7 +669,7 @@ export default function PokedexPage() {
                 ) : (
                   <p className="font-display text-xs font-extrabold text-pokedex-cyan">SPOTTED AGAIN!</p>
                 )}
-                <p className="font-soft text-sm font-bold text-foreground">
+                <p className="font-soft truncate text-sm font-bold text-foreground">
                   {displayName(toast.name)}{" "}
                   {toast.isNew ? `— found by @${toast.by}` : `— spotted by @${toast.by}`}
                 </p>
@@ -664,7 +685,7 @@ export default function PokedexPage() {
         )}
 
         {/* grid */}
-        <section aria-label="Pokedex entries" className="mb-12">
+        <section aria-label="Pokedex entries" className="mb-8">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <h2 className="font-display mb-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">
               <BookOpen className="mr-2 inline h-4 w-4 text-primary" />
@@ -770,23 +791,18 @@ export default function PokedexPage() {
           )}
         </section>
 
-        {/* how it works + safety */}
-        <section className="grid gap-4 sm:grid-cols-3">
-          <InfoCard
-            icon={<Radio className="h-4.5 w-4.5 text-primary" />}
-            title="Always listening"
-            body={`A 24/7 cloud listener watches #${TWITCH_CHANNEL}'s chat even when nobody has this site open. ANY word ending in "mon" — like "sillymon_" or a brand-new "blobmon" — becomes a species and its spotted counter grows. Opening this page adds a second pair of eyes, with live celebrations.`}
-          />
-          <InfoCard
-            icon={<FlaskConical className="h-4.5 w-4.5 text-pokedex-yellow" />}
-            title="Community love"
-            body="Open any entry and propose a description or artwork. Give yourself a nickname for credit — it appears on the entry once approved."
-          />
-          <InfoCard
-            icon={<ShieldCheck className="h-4.5 w-4.5 text-pokedex-cyan" />}
-            title="Safe & sound"
-            body="Submissions pass a word filter and land in a review queue. Nothing is published until the channel team approves it. Images are size/type-checked and stored privately until approved."
-          />
+        {/* pointer to the info page */}
+        <section aria-label="More about the dex">
+          <a
+            href="/info/"
+            className="font-soft group flex items-center justify-center gap-2 rounded-full border-2 border-border bg-white/80 px-5 py-3.5 text-center text-sm font-bold text-foreground shadow-[0_4px_14px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+          >
+            <BookOpen className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            Curious? See how friends are born, how to add research &amp; more
+            <span aria-hidden className="text-primary transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </a>
         </section>
       </main>
 
@@ -803,7 +819,10 @@ export default function PokedexPage() {
                 A living encyclopedia the whole chat builds together — one shout at a time.
               </p>
             </div>
-            <nav aria-label="Links" className="font-soft grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm font-bold">
+            <nav aria-label="Links" className="font-soft flex max-w-full flex-wrap gap-x-6 gap-y-1.5 text-sm font-bold">
+              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/info/">
+                How it works
+              </a>
               <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href={`https://twitch.tv/${TWITCH_CHANNEL}`} target="_blank" rel="noopener noreferrer">
                 Twitch channel <ExternalLink className="h-3 w-3" />
               </a>
@@ -829,26 +848,88 @@ export default function PokedexPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number | null }) {
+function StatPill({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | null;
+  accent?: "cyan";
+}) {
   const v = useCountUp(value ?? 0);
   return (
-    <div className="rounded-2xl border border-border bg-white/90 px-4 py-3 text-center shadow-[0_4px_14px_rgba(240,107,168,0.10)]">
-      <p className="font-display text-xl font-extrabold text-primary sm:text-2xl">
+    <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-white/90 px-2 py-2.5 shadow-[0_4px_14px_rgba(240,107,168,0.08)]">
+      <span className="shrink-0" aria-hidden>
+        {icon}
+      </span>
+      <p
+        className={`font-display whitespace-nowrap text-lg font-extrabold sm:text-xl ${
+          accent === "cyan" ? "text-pokedex-cyan" : "text-primary"
+        }`}
+      >
         {value === null ? "…" : formatNumber(v)}
       </p>
-      <p className="font-soft mt-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="font-soft text-left text-[11px] leading-tight font-bold tracking-wide text-muted-foreground uppercase">
+        {label}
+      </p>
     </div>
   );
 }
 
-function InfoCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  return (
-    <div className="candy-card p-6">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary">{icon}</span>
-        <h3 className="font-display text-sm font-bold text-foreground">{title}</h3>
+/** Cute spotlight card in the hero: the most recently spotted friend. */
+function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) => void }) {
+  if (!mon) {
+    return (
+      <div className="candy-card flex w-full flex-col items-center gap-2 rounded-3xl px-5 py-4 sm:w-[300px]" aria-hidden>
+        <div className="flex items-center gap-4">
+          {EXAMPLE_WORDS.slice(0, 3).map((w, i) => (
+            <div
+              key={w}
+              className="floaty flex h-12 w-12 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.12)]"
+              style={{ background: spriteBubbleBg(w, w), animationDelay: `${i * 300}ms` }}
+            >
+              <MonSprite name={w} seed={w} size={38} />
+            </div>
+          ))}
+        </div>
+        <p className="font-soft text-[11px] font-bold text-muted-foreground">friends will pop up here!</p>
       </div>
-      <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-    </div>
+    );
+  }
+  const by = mon.last_spotted_by || mon.discovered_by;
+  return (
+    <button
+      onClick={() => onOpen(mon.id)}
+      className="candy-card group relative flex w-full shrink-0 items-center gap-3.5 rounded-3xl px-4 py-4 text-left sm:w-[300px]"
+      aria-label={`Open ${mon.name} entry — the latest friend`}
+    >
+      <span className="font-display absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold whitespace-nowrap text-primary-foreground shadow-[0_2px_8px_rgba(240,107,168,0.4)]">
+        LATEST FRIEND
+      </span>
+      <div
+        className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_12px_rgba(240,107,168,0.14)]"
+        style={{ background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)) }}
+      >
+        {mon.image_path ? (
+          <img
+            src={publicImageUrl(mon.image_path)}
+            alt={`${mon.name} artwork`}
+            className="h-16 w-16 rounded object-contain"
+          />
+        ) : (
+          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} />
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="font-display truncate text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+          {displayName(mon.name)}
+        </p>
+        <p className="font-soft truncate text-[13px] font-semibold text-muted-foreground">spotted by @{by}</p>
+        <p className="font-soft text-xs font-bold text-primary">{relativeTime(mon.last_spotted_at, Date.now())}</p>
+      </div>
+    </button>
   );
 }

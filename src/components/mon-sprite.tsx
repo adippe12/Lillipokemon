@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { spriteBubbleBg } from "@/lib/sprite-bubble";
+
+export { spriteBubbleBg };
 
 /** FNV-1a string hash */
 function fnv1a(str: string): number {
@@ -165,10 +168,6 @@ function accentColor(rng: () => number, hue: number): string {
  * Mirrors the first rng() call of buildSprite (the hue pick), so a sprite
  * and its bubble always agree — deterministic per name+seed.
  */
-export function spriteBubbleBg(name: string, seed: string): string {
-  const hue = Math.floor(mulberry32(fnv1a(`${name.toLowerCase()}:${seed}`))() * 360);
-  return `hsl(${hue} 78% 94%)`;
-}
 
 export function MonSprite({
   name,

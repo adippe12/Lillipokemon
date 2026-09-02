@@ -75,7 +75,7 @@ export function MonCard({
       </div>
 
       <div className="w-full space-y-2">
-        <h3 className="font-display text-center text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+        <h3 className="font-display text-center text-lg font-bold break-words text-foreground transition-colors group-hover:text-primary">
           {displayName(mon.name)}
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-1.5 font-soft text-[13px] font-bold leading-none">
@@ -83,7 +83,7 @@ export function MonCard({
           <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-primary">
             {formatNumber(mon.spotted_count)} spotted
           </span>
-          <span className="rounded-full border border-border bg-secondary px-2 py-1 text-muted-foreground">
+          <span className="max-w-full truncate rounded-full border border-border bg-secondary px-2 py-1 text-muted-foreground">
             by @{mon.discovered_by}
           </span>
         </div>
