@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
+import { BASE_PATH } from "@/lib/base-path";
 import { type Mon, type Proposal, displayName, pokedexNumber, formatDate } from "@/lib/mons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ export default function AdminPage() {
             <span className="text-muted-foreground">/ team console</span>
           </h1>
           <div className="flex items-center gap-3">
-            <a href="/" className="font-lcd flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <a href={`${BASE_PATH}/`} className="font-lcd flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               Back to dex <ExternalLink className="h-3 w-3" />
             </a>
             {authState === "in" && (
