@@ -213,3 +213,27 @@ Stage Summary:
 - Listener stopgap LIVE (GH Actions every 5min); CF 24/7 worker ready-to-deploy (1 command once token fixed)
 - Hosting now CF-ONLY (pages.dev). Unpushed: 91be39b. Need: CF token w/ Workers:Edit on account
   0b4a39f7adcfd1320c96ad2d1ab944ed OR account id of the new token; GH token re-send for final push
+
+---
+Task ID: 11
+Agent: main (Super Z)
+Task: Deploy 24/7 CF Worker listener with corrected token + bake listener URL into site
+
+Work Log:
+- User sent corrected CF token cfut_XYkQ... ("ops avevo sbagliato token"); verify=active and
+  /accounts now correctly lists 0b4a39f7adcfd1320c96ad2d1ab944ed ("Adp1.998.pe@gmail.com's Account")
+- scripts/deploy_listener.sh + scripts/deploy_cfpages.sh default tokens updated to new token
+- WORKER DEPLOYED: lillipokemon-listener -> https://lillipokemon-listener.adp1-998-pe.workers.dev
+  (10.81 KiB, version b3c778ee); DEBUG_TOKEN secret uploaded; ops/listener/.debug-token saved
+- Health: connected:true, 5 triggers loaded (sillymon/eepymon/sleepymon/leafymon/aquamon),
+  watchdog auto-reconnect proven live (1 reconnect, recovered on its own); 2.5min+ uptime
+- Rebuilt static export with NEXT_PUBLIC_LISTENER_URL baked (chunk 7ed9a851741fec8c.js verified
+  containing workers.dev URL) and redeployed CF Pages (26 files, deployment 30bf5d73)
+- Browser-verified live site: "24/7 LISTENER" pill visible in header next to "LIVE . #lillimon_",
+  zero console errors; screenshot download/listener-badge-live.png
+- Git: 3 LOCAL-ONLY commits await GH token: 2de40b8 (listener+species), 91be39b (GH Pages removal),
+  36d2331 (worklog). Deploy scripts are gitignored (no token leak risk)
+
+Stage Summary:
+- TRUE 24/7 LISTENER IS LIVE (Cloudflare DO) — GH Actions stopgap stays as bonus redundancy
+- Site live with listener badge. ONLY remaining blocker: GitHub token to push the 3 local commits
