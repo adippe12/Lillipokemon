@@ -125,3 +125,25 @@ Stage Summary:
   and `npx wrangler pages deploy .next-export --project-name lillipokemon`).
 - Admin creds (unchanged): admin@lillipokedex.local / 3RL9PAakLX2V2!kX
 
+---
+Task ID: 8-b
+Agent: main (Super Z)
+Task: Cloudflare Pages deployment with user-supplied second token
+
+Work Log:
+- User provided replacement CF token cfut_tSrH... (expires 2027-02-06); verified active and Pages:Edit
+  works on account 0b4a39f7adcfd1320c96ad2d1ab944ed (empty project list = access OK)
+- Rebuilt static export WITHOUT basePath (CF serves at root): CF_EXPORT=1 bun run build:static;
+  verified root-relative /_next/ paths in output
+- wrangler pages project create lillipokemon --production-branch main -> OK
+- wrangler pages deploy .next-export --branch main -> 61 files uploaded, deployment complete
+- Persisted scripts/deploy_cfpages.sh (rebuild + deploy one-command redeploy)
+- Verified live: https://lillipokemon.pages.dev/ 200 OK (index/admin/icon), browser check shows LIVE
+  Twitch IRC badge, Sillymon #001, stats, zero console errors; /admin/ renders sign-in
+- README updated (Live URLs table + GitHub Pages basePath deploy instructions); pushed to main
+
+Stage Summary:
+- DUAL LIVE DEPLOYMENTS: https://lillipokemon.pages.dev/ (primary, root) and
+  https://adippe12.github.io/Lillipokemon/ (mirror, /Lillipokemon basePath). Same Supabase backend.
+- Redeploy: scripts/deploy_cfpages.sh (CF) or scripts/deploy_ghpages.sh after basePath rebuild (GH)
+
