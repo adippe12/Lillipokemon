@@ -218,7 +218,7 @@ function DescriptionForm({
   async function submit() {
     setError(null);
     if (!supabaseConfigured) {
-      setError("Database not configured.");
+      setError("Connection unavailable — try again soon.");
       return;
     }
     if (!clean) {

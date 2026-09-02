@@ -27,7 +27,6 @@ import {
   BookOpen,
   ExternalLink,
   FlaskConical,
-  Github,
   Heart,
   Radio,
   ShieldCheck,
@@ -85,7 +84,7 @@ export default function PokedexPage() {
   const [mons, setMons] = useState<Mon[]>([]);
   const [pending, setPending] = useState<Record<string, number>>({});
   const [setupError, setSetupError] = useState<string | null>(
-    supabaseConfigured ? null : "Supabase environment variables are missing."
+    supabaseConfigured ? null : "The Pokedex archives are not linked yet."
   );
   const [loading, setLoading] = useState(supabaseConfigured);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -129,7 +128,8 @@ export default function PokedexPage() {
       .select("*")
       .order("pokedex_no", { ascending: true });
     if (error) {
-      setSetupError(error.message);
+      console.error("loadMons failed:", error.message);
+      setSetupError("The Pokedex archives could not be reached. Refresh to retry.");
       return;
     }
     setMons((data ?? []) as Mon[]);
@@ -184,6 +184,38 @@ export default function PokedexPage() {
         { event: "UPDATE", schema: "public", table: "mons" },
         () => {
           void loadMons();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "mons" },
+        (payload) => {
+          const old = payload.old as { id: string };
+          celebrated.current.delete(old.id);
+          setMons((prev) => prev.filter((m) => m.id !== old.id));
+          setPending((prev) => {
+            if (!(old.id in prev)) return prev;
+            const next = { ...prev };
+            delete next[old.id];
+            return next;
+          });
+          setSelectedId((sel) => (sel === old.id ? null : sel));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mon_triggers" },
+        (payload) => {
+          const row = payload.new as { word: string };
+          setTriggers((prev) => (prev.includes(row.word) ? prev : [...prev, row.word]));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "mon_triggers" },
+        (payload) => {
+          const old = payload.old as { word: string };
+          setTriggers((prev) => prev.filter((w) => w !== old.word));
         }
       )
       .subscribe();
@@ -272,7 +304,7 @@ export default function PokedexPage() {
         {setupError && (
           <Alert variant="destructive" className="mb-6">
             <Activity className="h-4 w-4" />
-            <AlertTitle className="font-lcd">Database not connected</AlertTitle>
+            <AlertTitle className="font-lcd">Connection issue</AlertTitle>
             <AlertDescription className="font-lcd text-sm">{setupError}</AlertDescription>
           </Alert>
         )}
@@ -399,24 +431,12 @@ export default function PokedexPage() {
                 <Heart className="inline h-3 w-3 text-primary" fill="currentColor" /> for the lillimon_ community
               </p>
               <p className="font-lcd text-sm text-muted-foreground">
-                100% free-forever stack: Cloudflare Pages + Supabase free tier + anonymous Twitch IRC.
+                A living encyclopedia the whole chat builds together — one shout at a time.
               </p>
             </div>
-            <nav aria-label="Resources" className="font-lcd grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+            <nav aria-label="Links" className="font-lcd grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
               <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href={`https://twitch.tv/${TWITCH_CHANNEL}`} target="_blank" rel="noopener noreferrer">
                 Twitch channel <ExternalLink className="h-3 w-3" />
-              </a>
-              <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href="https://github.com/adippe12/Lillipokemon" target="_blank" rel="noopener noreferrer">
-                Source code <Github className="h-3 w-3" />
-              </a>
-              <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href="https://supabase.com/docs" target="_blank" rel="noopener noreferrer">
-                Supabase docs <ExternalLink className="h-3 w-3" />
-              </a>
-              <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href="https://developers.cloudflare.com/pages/" target="_blank" rel="noopener noreferrer">
-                Cloudflare Pages <ExternalLink className="h-3 w-3" />
-              </a>
-              <a className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground" href="https://dev.twitch.tv/docs/chat/irc/" target="_blank" rel="noopener noreferrer">
-                Twitch IRC docs <ExternalLink className="h-3 w-3" />
               </a>
               <Button asChild variant="ghost" className="h-auto justify-start p-0 font-lcd text-sm text-muted-foreground hover:bg-transparent hover:text-foreground">
                 <a href={`${BASE_PATH}/admin/`} className="flex items-center gap-1.5">

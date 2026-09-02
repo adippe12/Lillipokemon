@@ -11,6 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MonSprite } from "@/components/mon-sprite";
 import {
   Check,
@@ -133,6 +143,8 @@ function Console() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Mon | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const load = useCallback(async () => {
     const [{ data: props }, { data: monsData }] = await Promise.all([
@@ -197,6 +209,30 @@ function Console() {
     setMsg(error ? error.message : `${field} cleared.`);
     await load();
     setBusyId(null);
+  }
+
+  async function removeMon(mon: Mon) {
+    setRemoving(true);
+    setMsg(null);
+    try {
+      // delete known image folders first (console has storage manage rights)
+      for (const prefix of [`pending/${mon.name}`, `approved/${mon.name}`]) {
+        const { data: objs } = await supabase.storage.from(MON_IMAGES_BUCKET).list(prefix);
+        const paths = (objs ?? []).map((o) => `${prefix}/${o.name}`);
+        if (paths.length) {
+          await supabase.storage.from(MON_IMAGES_BUCKET).remove(paths).catch(() => {});
+        }
+      }
+      const { error } = await supabase.rpc("delete_mon", { p_mon_id: mon.id });
+      if (error) throw error;
+      setMsg(`${displayName(mon.name)} removed — entry, proposals, images and its trigger word are gone.`);
+      setRemoveTarget(null);
+      await load();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Remove failed");
+    } finally {
+      setRemoving(false);
+    }
   }
 
   return (
@@ -315,11 +351,43 @@ function Console() {
                 <Button size="sm" variant="outline" className="font-lcd" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
                   <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear art
                 </Button>
+                <Button size="sm" variant="destructive" className="font-lcd" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
+                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove species
+                </Button>
               </div>
             </div>
           ))}
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={removeTarget !== null} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <AlertDialogContent className="border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-pixel text-xs uppercase">
+              Remove {removeTarget ? displayName(removeTarget.name) : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-lcd text-sm leading-relaxed">
+              This permanently deletes the dex entry, every proposal and image submitted for it,
+              and retires its trigger word — chat can no longer re-discover it. The pokedex number
+              is never reused. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-lcd" disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="font-lcd bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={removing}
+              onClick={(e) => {
+                e.preventDefault();
+                if (removeTarget) void removeMon(removeTarget);
+              }}
+            >
+              {removing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

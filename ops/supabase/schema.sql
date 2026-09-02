@@ -250,6 +250,10 @@ begin
     alter publication supabase_realtime add table public.proposals;
   exception when others then null;
   end;
+  begin
+    alter publication supabase_realtime add table public.mon_triggers;
+  exception when others then null;
+  end;
 end $$;
 
 -- 13) Storage bucket + policies --------------------------------
@@ -282,3 +286,37 @@ create policy "mon_images_admin_manage" on storage.objects for all
 grant select on public.mons to anon, authenticated;
 grant select, insert on public.proposals to anon, authenticated;
 grant select on public.mon_triggers to anon, authenticated;
+
+-- 15) Admin: remove a species entirely --------------------------
+-- Deletes the dex entry, its proposals (FK cascade), its storage
+-- images (pending/ + approved/ folders keyed by species name) and
+-- retires its trigger word so chat cannot re-discover it.
+create or replace function public.delete_mon(p_mon_id uuid)
+returns void
+language plpgsql security definer set search_path = public, storage as $$
+declare
+  mon_name text;
+begin
+  if not exists (select 1 from admins a where a.email = coalesce(auth.email(), '')) then
+    raise exception 'Not authorized';
+  end if;
+
+  select name into mon_name from mons where id = p_mon_id for update;
+  if not found then
+    raise exception 'Species not found';
+  end if;
+
+  begin
+    delete from storage.objects
+     where bucket_id = 'mon-images'
+       and (name like 'pending/' || mon_name || '/%'
+            or name like 'approved/' || mon_name || '/%');
+  exception when others then
+    null; -- best-effort: the console also deletes files client-side
+  end;
+
+  delete from mons where id = p_mon_id;
+  delete from mon_triggers where word = mon_name;
+end $$;
+
+grant execute on function public.delete_mon(uuid) to authenticated;
