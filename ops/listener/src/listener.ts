@@ -18,12 +18,12 @@
  *                 -> feeds a synthetic chat line through the real pipeline
  *                    (ops/testing only; gated by a secret token)
  */
-import { TWITCH_CHANNEL, canonicalize, buildTriggerRegex } from "../../../src/lib/mons";
+import { TWITCH_CHANNEL, canonicalize, buildTriggerRegex, findMonInText } from "../../../src/lib/mons";
 import {
   IRC_WS_URL,
   SpotReporter,
+  fetchReserved,
   fetchTriggers,
-  findTrigger,
   ircHandshake,
   parseIrcLine,
 } from "./irc-core";
@@ -61,6 +61,7 @@ export class ChatListener {
   private reconnects = 0;
   private attempts = 0;
   private triggers: string[] = [];
+  private reserved: string[] = [];
   private regex: RegExp | null = null;
   private reporter!: SpotReporter;
   private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -217,7 +218,7 @@ export class ChatListener {
       scanned++;
       this.msgsScanned++;
       this.lastMessageAt = Date.now();
-      const canon = findTrigger(msg.text, this.regex);
+      const canon = findMonInText(msg.text, this.regex, this.reserved);
       if (canon) {
         matched = canon;
         this.matchesFound++;
@@ -247,8 +248,12 @@ export class ChatListener {
   // ---- triggers ----
 
   private async refreshTriggers(): Promise<void> {
-    const words = await fetchTriggers(this.env.SUPABASE_URL, this.env.SUPABASE_ANON_KEY);
+    const [words, reservedWords] = await Promise.all([
+      fetchTriggers(this.env.SUPABASE_URL, this.env.SUPABASE_ANON_KEY),
+      fetchReserved(this.env.SUPABASE_URL, this.env.SUPABASE_ANON_KEY),
+    ]);
     if (words.length) this.triggers = words;
+    if (reservedWords.length) this.reserved = reservedWords;
     this.regex = buildTriggerRegex(this.triggers);
   }
 
@@ -271,6 +276,7 @@ export class ChatListener {
       matchesFound: this.matchesFound,
       reconnects: this.reconnects,
       triggers: this.triggers,
+      reservedCount: this.reserved.length,
       reporter: this.reporter ? this.reporter.getStats() : null,
       checkedAt: new Date().toISOString(),
     };

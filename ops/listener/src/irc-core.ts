@@ -167,4 +167,30 @@ export async function fetchTriggers(
   }
 }
 
-export { buildTriggerRegex, canonicalize };
+/**
+ * Fetch reserved words (plain words ending in "mon" that must NOT become
+ * species — "demon", "pokemon", ...). Public read, same as the browser.
+ */
+export async function fetchReserved(
+  supabaseUrl: string,
+  anonKey: string
+): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `${supabaseUrl.replace(/\/+$/, "")}/rest/v1/reserved_words?select=word`,
+      {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const rows = (await res.json()) as { word: string }[];
+    return rows.map((r) => r.word).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export { buildTriggerRegex, canonicalize } from "../../../src/lib/mons";

@@ -8,8 +8,15 @@ import {
   SpotReporter,
   ircHandshake,
   fetchTriggers,
+  fetchReserved,
 } from "./src/irc-core";
-import { buildTriggerRegex, canonicalize } from "../../src/lib/mons";
+import {
+  buildTriggerRegex,
+  canonicalize,
+  findMonInText,
+  isAllowedMonName,
+  DEFAULT_RESERVED,
+} from "../../src/lib/mons";
 
 let failures = 0;
 function check(name: string, cond: boolean, extra?: unknown) {
@@ -40,6 +47,25 @@ check("rejects underscore prefix concat", findTrigger("abcs_sillymon", re) === n
 check("matches after punctuation", findTrigger("(sleepymon)", re) === "sleepymon");
 check("first match wins", findTrigger("eepymon then sillymon", re) === "eepymon");
 check("null regex safe", findTrigger("sillymon", null) === null);
+
+// ---- OPEN matching: findMonInText (trigger words first, then any *mon word) ----
+const reserved = DEFAULT_RESERVED;
+const re2 = buildTriggerRegex(["sillymon", "eepymon", "sleepymon"]);
+check("open: any mon word", findMonInText("yo blobmon_ !!", re2, reserved) === "blobmon");
+check("open: monmon", findMonInText("monmon", re2, reserved) === "monmon");
+check("open: shouty", findMonInText("GUTMON FTW", re2, reserved) === "gutmon");
+check("open: trigger still wins", findMonInText("blobmon then sillymon", re2, reserved) === "sillymon");
+check("open: rejects reserved demon", findMonInText("the demon", re2, reserved) === null);
+check("open: rejects reserved pokemon", findMonInText("pokemon go", re2, reserved) === null);
+check("open: rejects reserved common", findMonInText("very common", re2, reserved) === null);
+check("open: rejects short gmon", findMonInText("gmon", re2, reserved) === null);
+check("open: rejects non-mon dragon", findMonInText("a dragon", re2, reserved) === null);
+check("open: rejects profane", findMonInText("fuckmon", re2, reserved) === null);
+check("open: rejects prefix concat", findMonInText("summon the blobmon", re2, reserved) === "blobmon", findMonInText("summon the blobmon", re2, reserved));
+check("open: word after punctuation", findMonInText("(zedmon)", re2, reserved) === "zedmon");
+check("open: rejects xyzmon_suffix", findMonInText("blobmonster", re2, reserved) === null);
+check("open: pokmon (poké stripped)", findMonInText("pokémon", re2, reserved) === null);
+check("isAllowedMonName unit", isAllowedMonName("zzzmon", reserved) === true && isAllowedMonName("demon", reserved) === false);
 
 // ---- parseIrcLine ----
 const line =
@@ -97,6 +123,12 @@ const triggers = await fetchTriggers(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cHRkbndjbnNoZHh3enNqeXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNTYxMzQsImV4cCI6MjA3NzczMjEzNH0.-TR5U-dfcRCzBjgmlRJuP_XO6eRwYPS151JAWKGR5y8"
 );
 check("fetchTriggers live DB", triggers.length >= 3 && triggers.includes("sillymon"), triggers);
+
+const reservedLive = await fetchReserved(
+  "https://wzptdnwcnshdxwzsjyzb.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cHRkbndjbnNoZHh3enNqeXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNTYxMzQsImV4cCI6MjA3NzczMjEzNH0.-TR5U-dfcRCzBjgmlRJuP_XO6eRwYPS151JAWKGR5y8"
+);
+check("fetchReserved live DB", reservedLive.includes("demon") && reservedLive.includes("pokemon"), reservedLive);
 
 console.log(failures === 0 ? "\nALL TESTS PASSED" : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

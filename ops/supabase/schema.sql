@@ -98,6 +98,18 @@ create trigger proposals_safety before insert or update on public.proposals
 for each row execute function public.proposal_safety_check();
 
 -- 7) Discovery RPC (chat -> species upsert) -------------------
+-- OPEN matching: any word ending in "mon" (>= 2 chars before it) becomes a
+-- species, minus reserved plain words + banned profanity substrings.
+-- mon_triggers stays as an admin-curated allowlist (any word shape).
+create table if not exists public.reserved_words (
+  word     text primary key,
+  added_at timestamptz not null default now()
+);
+insert into public.reserved_words (word) values
+  ('pokemon'), ('pokmon'), ('demon'), ('lemon'), ('salmon'), ('common'),
+  ('uncommon'), ('summon'), ('sermon'), ('cinnamon'), ('gammon')
+on conflict (word) do nothing;
+
 create or replace function public.discover_mon(p_name text, p_by text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -110,8 +122,21 @@ begin
   if canon = '' or char_length(canon) > 30 then
     return;
   end if;
+  if canon !~ '^[a-z0-9]' then
+    return; -- must start with a letter or digit
+  end if;
+  -- profanity guard ALWAYS applies (substring match, e.g. "fuckmon")
+  if exists (select 1 from banned_words b where position(b.word in canon) > 0) then
+    return;
+  end if;
   if not exists (select 1 from mon_triggers t where t.word = canon) then
-    return; -- silently ignore words that are not registered species triggers
+    -- open matching: any *mon word, minus reserved plain words
+    if canon !~ 'mon$' or char_length(canon) < 5 then
+      return;
+    end if;
+    if exists (select 1 from reserved_words r where r.word = canon) then
+      return;
+    end if;
   end if;
   spotted_by := left(coalesce(nullif(trim(p_by), ''), 'anonymous'), 40);
 
@@ -207,6 +232,7 @@ alter table public.proposals   enable row level security;
 alter table public.admins      enable row level security;
 alter table public.mon_triggers enable row level security;
 alter table public.banned_words enable row level security;
+alter table public.reserved_words enable row level security;
 
 drop policy if exists "mons_public_read" on public.mons;
 create policy "mons_public_read" on public.mons for select using (true);
@@ -236,6 +262,10 @@ create policy "admins_read_own" on public.admins for select
 -- triggers: public read (browser listener needs the word list)
 drop policy if exists "triggers_public_read" on public.mon_triggers;
 create policy "triggers_public_read" on public.mon_triggers for select using (true);
+
+-- reserved words: public read (browser + worker open matching need the blocklist)
+drop policy if exists "reserved_words_public_read" on public.reserved_words;
+create policy "reserved_words_public_read" on public.reserved_words for select using (true);
 
 -- banned_words: intentionally NO public read (do not reveal the filter)
 
@@ -286,6 +316,7 @@ create policy "mon_images_admin_manage" on storage.objects for all
 grant select on public.mons to anon, authenticated;
 grant select, insert on public.proposals to anon, authenticated;
 grant select on public.mon_triggers to anon, authenticated;
+grant select on public.reserved_words to anon, authenticated;
 
 -- 15) Admin: remove a species entirely --------------------------
 -- Deletes the dex entry, its proposals (FK cascade), its storage

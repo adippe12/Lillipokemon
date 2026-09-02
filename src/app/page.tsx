@@ -6,6 +6,7 @@ import {
   type Mon,
   TWITCH_CHANNEL,
   DEFAULT_TRIGGERS,
+  DEFAULT_RESERVED,
   displayName,
   formatNumber,
 } from "@/lib/mons";
@@ -81,6 +82,7 @@ function celebrate() {
 
 export default function PokedexPage() {
   const [triggers, setTriggers] = useState<string[]>(DEFAULT_TRIGGERS);
+  const [reserved, setReserved] = useState<string[]>(DEFAULT_RESERVED);
   const [mons, setMons] = useState<Mon[]>([]);
   const [pending, setPending] = useState<Record<string, number>>({});
   const [setupError, setSetupError] = useState<string | null>(
@@ -152,13 +154,20 @@ export default function PokedexPage() {
       setLoading(false);
     })().catch(() => setLoading(false));
 
-    // triggers
+    // triggers + reserved words (open matching blocklist)
     supabase
       .from("mon_triggers")
       .select("word")
       .then(({ data }) => {
         const words = (data ?? []).map((r: { word: string }) => r.word);
         if (words.length) setTriggers(words);
+      });
+    supabase
+      .from("reserved_words")
+      .select("word")
+      .then(({ data }) => {
+        const words = (data ?? []).map((r: { word: string }) => r.word);
+        if (words.length) setReserved(words);
       });
 
     // realtime
@@ -243,6 +252,7 @@ export default function PokedexPage() {
   const { status, scanned } = useTwitchChat({
     channel: TWITCH_CHANNEL,
     triggers,
+    reserved,
     onMatch: handleMatch,
   });
 
@@ -385,7 +395,7 @@ export default function PokedexPage() {
             <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-12 text-center">
               <p className="font-pixel text-xs text-muted-foreground">NO SPECIES YET</p>
               <p className="font-lcd mt-2 text-base text-muted-foreground">
-                Someone just has to type <span className="text-pokedex-yellow">{triggers.join(", ")}</span> in {TWITCH_CHANNEL}&apos;s chat!
+                Type <span className="text-pokedex-yellow">ANY word ending in &ldquo;mon&rdquo;</span> in {TWITCH_CHANNEL}&apos;s chat — blobmon, gutmon, whatevermon!
               </p>
             </div>
           ) : (
@@ -407,7 +417,7 @@ export default function PokedexPage() {
           <InfoCard
             icon={<Radio className="h-5 w-5 text-pokedex-cyan" />}
             title="LIVE LISTENING"
-            body={`A 24/7 cloud listener watches #${TWITCH_CHANNEL}'s chat even when nobody has this site open. When someone types a creature's name — like "sillymon_" — the species is registered and its spotted counter grows. Opening this page adds a second pair of eyes, with live celebrations.`}
+            body={`A 24/7 cloud listener watches #${TWITCH_CHANNEL}'s chat even when nobody has this site open. ANY word ending in "mon" — like "sillymon_" or a brand-new "blobmon" — becomes a species and its spotted counter grows. Opening this page adds a second pair of eyes, with live celebrations.`}
           />
           <InfoCard
             icon={<FlaskConical className="h-5 w-5 text-pokedex-yellow" />}

@@ -2,7 +2,7 @@
 
 A live, community-powered Pokedex for the Twitch channel **[lillimon_](https://twitch.tv/lillimon_)**.
 
-Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `eepymon`, `sleepymon_`, `leafymon`, `aquamon`, …), a new species entry is created on the Pokedex in real time. Viewers can then propose **descriptions** and **artwork** for each species — everything is **safety-filtered and human-approved** before it goes live.
+Any time someone types a word that **ends in `mon`** in chat (`sillymon`, `sillymon_`, `blobmon`, `gutmon`, …), a new species entry is created on the Pokedex in real time — ordinary words like "demon" or "pokemon" are reserved-ignored, and profanity is filtered server-side. Viewers can then propose **descriptions** and **artwork** for each species — everything is **safety-filtered and human-approved** before it goes live.
 
 **100% free-forever stack:** Cloudflare Pages (static hosting) + Cloudflare Worker/Durable Object (24/7 listener) + Supabase free tier (database, auth, storage, realtime) + anonymous Twitch IRC (no API keys).
 
@@ -22,7 +22,7 @@ Every time someone types a creature's name in chat (`sillymon`, `sillymon_`, `ee
 Twitch chat ──▶ LISTENERS (any of, idempotent together):
    (1) Cloudflare Durable Object  ops/listener/   — true 24/7, zero credentials
    (2) any open browser tab       src/lib/use-twitch-chat.ts — bonus eyes
-                     │  same regex core:  ^|(non-word) trigger _* (word-end)
+                     │  same regex core:  ^|(non-word) trigger / *mon word _* (word-end)
                      ▼
              Supabase RPC discover_mon(name, spotted_by)   ← server validates trigger words,
                      │                                       dedups, rate-limits counters
@@ -37,7 +37,7 @@ channel admin ──▶ /admin console: approve or reject  ──▶ approved co
 ```
 
 - **Two listeners, one core** (`ops/listener/src/irc-core.ts` + `src/lib/mons.ts`): the Durable Object listens 24/7; every open browser tab adds a bonus listener with live celebrations. Discovery is idempotent — 100 listeners = still 1 species, counter bumps are rate-limited (90s).
-- **Trigger words** live in the `mon_triggers` table — add a new species trigger by inserting a word; listeners refresh their word list every few minutes (default: `sillymon`, `eepymon`, `sleepymon`, `leafymon`, `aquamon`).
+- **Open matching**: ANY chat word ending in `mon` (min 2 chars before it) discovers a species. Plain words that happen to end in `mon` ("demon", "pokemon", "lemon", …) live in the `reserved_words` table and are ignored; the `banned_words` profanity filter always applies. The five **featured trigger words** (chips in the hero) stay admin-curated in `mon_triggers` — they also allow custom word shapes. Listeners refresh both lists every few minutes.
 - **Sprites**: species without approved art get a deterministic procedural pixel-mon generated from their name.
 
 ## Safety design
