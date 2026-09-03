@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
-import { type Mon, type Proposal, displayName, pokedexNumber, formatDate } from "@/lib/mons";
+import { type Mon, type Proposal, displayName, pokedexNumber, formatDate, canonicalize, MAX_IMAGE_MB, ALLOWED_IMAGE_TYPES } from "@/lib/mons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -144,6 +145,7 @@ function Console() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Mon | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [{ data: props }, { data: monsData }] = await Promise.all([
@@ -324,34 +326,56 @@ function Console() {
 
         <TabsContent value="species" className="mt-4 space-y-3">
           {mons.map((m) => (
-            <div key={m.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
-              <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border" style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}>
-                {m.image_path ? (
-                  <img src={publicImageUrl(m.image_path)} alt="" className="h-14 w-14 object-contain" />
-                ) : (
-                  <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} needsArt />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-soft text-sm text-muted-foreground">{pokedexNumber(m.pokedex_no)}</span>
-                  <span className="font-display text-[11px] uppercase">{displayName(m.name)}</span>
-                  <Badge variant="secondary" className="font-soft">{m.spotted_count} spotted</Badge>
-                  <Badge variant="secondary" className="font-soft">by @{m.discovered_by}</Badge>
+            <div key={m.id} className="space-y-2">
+              <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+                <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border" style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}>
+                  {m.image_path ? (
+                    <img src={publicImageUrl(m.image_path)} alt="" className="h-14 w-14 object-contain" />
+                  ) : (
+                    <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} needsArt />
+                  )}
                 </div>
-                {m.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">&ldquo;{m.description}&rdquo;</p>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-soft text-sm text-muted-foreground">{pokedexNumber(m.pokedex_no)}</span>
+                    <span className="font-display text-[11px] uppercase">{displayName(m.name)}</span>
+                    <Badge variant="secondary" className="font-soft">{m.spotted_count} spotted</Badge>
+                    <Badge variant="secondary" className="font-soft">by @{m.discovered_by}</Badge>
+                  </div>
+                  {m.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">&ldquo;{m.description}&rdquo;</p>}
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-soft"
+                    disabled={busyId === m.id}
+                    onClick={() => setEditId(editId === m.id ? null : m.id)}
+                  >
+                    <PenLine className="mr-1 h-3.5 w-3.5" /> Edit
+                  </Button>
+                  <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.description} onClick={() => void clearField(m, "description")}>
+                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear desc
+                  </Button>
+                  <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
+                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear art
+                  </Button>
+                  <Button size="sm" variant="destructive" className="font-soft" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
+                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove species
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.description} onClick={() => void clearField(m, "description")}>
-                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear desc
-                </Button>
-                <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
-                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear art
-                </Button>
-                <Button size="sm" variant="destructive" className="font-soft" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
-                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove species
-                </Button>
-              </div>
+              {editId === m.id && (
+                <EditMonForm
+                  mon={m}
+                  onDone={(doneMsg) => {
+                    setMsg(doneMsg);
+                    setEditId(null);
+                    void load();
+                  }}
+                  onCancel={() => setEditId(null)}
+                />
+              )}
             </div>
           ))}
         </TabsContent>
@@ -393,6 +417,218 @@ function Empty({ text }: { text: string }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-10 text-center">
       <p className="font-soft text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+/**
+ * Full inline editor for one species: rename (moves the chat trigger word,
+ * storage folders and pending proposals), rewrite the story + credit, fix
+ * the discoverer and spotted count, and swap the approved artwork.
+ * The update_mon RPC treats NULL as "keep current value", so only changed
+ * fields are sent.
+ */
+function EditMonForm({
+  mon,
+  onDone,
+  onCancel,
+}: {
+  mon: Mon;
+  onDone: (msg: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(mon.name);
+  const [desc, setDesc] = useState(mon.description ?? "");
+  const [descBy, setDescBy] = useState(mon.description_by ?? "");
+  const [discBy, setDiscBy] = useState(mon.discovered_by);
+  const [count, setCount] = useState(String(mon.spotted_count));
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const nextName = canonicalize(name) || mon.name;
+  const nameChanged = nextName !== mon.name;
+  const descChanged = desc.trim() !== (mon.description ?? "");
+  const descCleared = descChanged && desc.trim() === "";
+  const discChanged = discBy.trim() !== mon.discovered_by;
+  const countNum = Number.parseInt(count, 10);
+  const countChanged = Number.isFinite(countNum) && countNum !== mon.spotted_count;
+  const nothingChanged = !nameChanged && !descChanged && !discChanged && !countChanged && !file;
+
+  function pick(f: File | null) {
+    setErr(null);
+    setFile(null);
+    setPreview(null);
+    if (!f) return;
+    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+      setErr("Only PNG, JPEG, WebP or GIF allowed.");
+      return;
+    }
+    if (f.size > MAX_IMAGE_MB * 1024 * 1024) {
+      setErr(`Image too big — max ${MAX_IMAGE_MB}MB.`);
+      return;
+    }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  }
+
+  async function save() {
+    setErr(null);
+    if (desc.trim().length > 500) {
+      setErr("Description too long (max 500).");
+      return;
+    }
+    if (!Number.isFinite(countNum) || countNum < 0 || countNum > 1000000) {
+      setErr("Spotted count must be between 0 and 1,000,000.");
+      return;
+    }
+    if (nothingChanged) {
+      onCancel();
+      return;
+    }
+    setBusy(true);
+    let imagePath: string | null = null;
+    try {
+      if (file) {
+        const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : file.type === "image/gif" ? "gif" : "jpg";
+        const path = `approved/${nextName}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from(MON_IMAGES_BUCKET)
+          .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+        if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
+        imagePath = path;
+      }
+      const { error } = await supabase.rpc("update_mon", {
+        p_mon_id: mon.id,
+        p_name: nameChanged ? nextName : null,
+        p_description: descChanged && !descCleared ? desc.trim() : null,
+        p_description_by: descChanged && !descCleared ? descBy.trim() : null,
+        p_clear_description: descCleared,
+        p_discovered_by: discChanged ? discBy.trim() : null,
+        p_spotted_count: countChanged ? countNum : null,
+        p_image_path: imagePath,
+        p_image_by: imagePath ? mon.image_by : null,
+        p_clear_image: false,
+      });
+      if (error) throw error;
+      // swap done — drop the previous approved file (best effort)
+      if (imagePath && mon.image_path) {
+        await supabase.storage.from(MON_IMAGES_BUCKET).remove([mon.image_path]).catch(() => {});
+      }
+      onDone(nameChanged ? `Renamed to ${displayName(nextName)} and updated.` : `${displayName(mon.name)} updated.`);
+    } catch (e) {
+      // roll back an already-uploaded file so a failed save leaves no orphans
+      if (imagePath) {
+        await supabase.storage.from(MON_IMAGES_BUCKET).remove([imagePath]).catch(() => {});
+      }
+      setErr(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-primary/25 bg-secondary/40 p-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-display text-[11px] uppercase tracking-wide text-muted-foreground">
+          Edit {displayName(mon.name)} <span className="text-primary/60">#{mon.pokedex_no}</span>
+        </h4>
+        <button onClick={onCancel} className="font-soft text-xs font-bold text-muted-foreground transition hover:text-primary">
+          cancel
+        </button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="font-soft text-xs">Species name (the chat trigger word)</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-background font-soft" />
+          <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+            {nameChanged ? (
+              <>
+                renaming moves the chat word, artwork folders and pending proposals — becomes{" "}
+                <span className="font-bold text-primary">{nextName}</span>
+              </>
+            ) : (
+              <>lowercase word ending in &ldquo;mon&rdquo; — changing it changes what chat types to spot this species</>
+            )}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="font-soft text-xs">Discovered by</Label>
+            <Input value={discBy} onChange={(e) => setDiscBy(e.target.value)} className="bg-background font-soft" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-soft text-xs">Spotted count</Label>
+            <Input type="number" min={0} value={count} onChange={(e) => setCount(e.target.value)} className="bg-background font-soft" />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between">
+          <Label className="font-soft text-xs">Story / description</Label>
+          <span className="font-soft text-[11px] text-muted-foreground">
+            {desc.trim().length}/500 — saving it empty removes the story
+          </span>
+        </div>
+        <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} className="bg-background font-soft" />
+        <Input
+          value={descBy}
+          onChange={(e) => setDescBy(e.target.value)}
+          placeholder="credit (who wrote it) — default: team"
+          className="bg-background font-soft text-xs"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="font-soft text-xs">Artwork</Label>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-border bg-background">
+            {preview ? (
+              <img src={preview} alt="New artwork preview" className="max-h-14 max-w-14 object-contain" />
+            ) : mon.image_path ? (
+              <img src={publicImageUrl(mon.image_path)} alt="" className="max-h-14 max-w-14 object-contain" />
+            ) : (
+              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={52} needsArt />
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ALLOWED_IMAGE_TYPES.join(",")}
+            className="hidden"
+            onChange={(e) => pick(e.target.files?.[0] ?? null)}
+          />
+          <Button size="sm" variant="outline" className="font-soft" onClick={() => fileRef.current?.click()} disabled={busy}>
+            <ImageIcon className="mr-1 h-3.5 w-3.5" />
+            {file ? "Change file" : mon.image_path ? "Replace artwork" : "Upload artwork"}
+          </Button>
+          {file && <span className="font-soft max-w-48 truncate text-xs text-muted-foreground">{file.name}</span>}
+          {file && (
+            <button onClick={() => pick(null)} className="font-soft text-xs font-bold text-muted-foreground transition hover:text-destructive">
+              undo
+            </button>
+          )}
+        </div>
+        <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+          PNG / JPEG / WebP / GIF, max {MAX_IMAGE_MB}MB. Uploads land straight in the approved folder — public immediately.
+        </p>
+      </div>
+
+      {err && <p className="font-soft text-sm text-destructive">{err}</p>}
+
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" className="font-soft" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+        <Button size="sm" className="font-soft" onClick={() => void save()} disabled={busy || nothingChanged}>
+          {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Save changes
+        </Button>
+      </div>
     </div>
   );
 }
