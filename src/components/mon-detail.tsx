@@ -177,23 +177,57 @@ function ProposalSection({
   nickname: string;
   setNickname: (v: string) => void;
 }) {
+  // Completed entries (story + artwork both approved) collapse the whole
+  // proposal form into one discreet button so the entry stays clean; anything
+  // still missing keeps the form visible to nudge chat into filling the gap.
+  const [expanded, setExpanded] = useState(false);
+  const complete = Boolean(mon.description && mon.image_path);
+
+  if (complete && !expanded) {
+    return (
+      <div className="flex justify-center pt-0.5">
+        <button
+          onClick={() => setExpanded(true)}
+          className="font-soft flex items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.06)] transition hover:border-primary/40 hover:text-primary"
+          aria-label="Propose an improved description or new artwork"
+        >
+          <PenLine className="h-3.5 w-3.5" aria-hidden />
+          improve this entry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <Tabs defaultValue="description" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
-        <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
-          <PenLine className="h-4 w-4" /> Describe it
-        </TabsTrigger>
-        <TabsTrigger value="image" className="font-soft gap-1.5 rounded-full text-sm font-bold">
-          <ImageIcon className="h-4 w-4" /> Submit art
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="description" className="mt-4">
-        <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
-      </TabsContent>
-      <TabsContent value="image" className="mt-4">
-        <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-3">
+      {complete && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setExpanded(false)}
+            className="font-soft flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:text-primary"
+          >
+            <X className="h-3 w-3" aria-hidden />
+            hide form
+          </button>
+        </div>
+      )}
+      <Tabs defaultValue="description" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
+          <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
+            <PenLine className="h-4 w-4" /> Describe it
+          </TabsTrigger>
+          <TabsTrigger value="image" className="font-soft gap-1.5 rounded-full text-sm font-bold">
+            <ImageIcon className="h-4 w-4" /> Submit art
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="description" className="mt-4">
+          <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
+        </TabsContent>
+        <TabsContent value="image" className="mt-4">
+          <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
