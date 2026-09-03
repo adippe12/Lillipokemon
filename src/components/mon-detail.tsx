@@ -110,7 +110,7 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
               className="relative h-24 w-24 rounded-lg object-contain"
             />
           ) : (
-            <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" />
+            <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">

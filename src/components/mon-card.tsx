@@ -70,7 +70,7 @@ export function MonCard({
             loading="lazy"
           />
         ) : (
-          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={84} />
+          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={84} needsArt />
         )}
       </div>
 

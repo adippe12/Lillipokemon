@@ -640,10 +640,10 @@ export default function PokedexPage() {
                       className="h-9 w-9 rounded object-contain"
                     />
                   ) : (
-                    <MonSprite name={toast.name} seed={toastMon.id.slice(0, 8)} size={36} />
+                    <MonSprite name={toast.name} seed={toastMon.id.slice(0, 8)} size={36} needsArt />
                   )
                 ) : (
-                  <MonSprite name={toast.name} seed={toast.name} size={36} />
+                  <MonSprite name={toast.name} seed={toast.name} size={36} needsArt />
                 )}
               </div>
               <div>
@@ -897,7 +897,7 @@ function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) =
             className="h-16 w-16 rounded object-contain"
           />
         ) : (
-          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} />
+          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} needsArt />
         )}
       </div>
       <div className="min-w-0">

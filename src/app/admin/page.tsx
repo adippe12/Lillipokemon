@@ -329,7 +329,7 @@ function Console() {
                 {m.image_path ? (
                   <img src={publicImageUrl(m.image_path)} alt="" className="h-14 w-14 object-contain" />
                 ) : (
-                  <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} />
+                  <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} needsArt />
                 )}
               </div>
               <div className="min-w-0 flex-1">

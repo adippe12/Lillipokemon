@@ -175,27 +175,58 @@ export function MonSprite({
   size = 96,
   shiny = false,
   className,
+  needsArt = false,
 }: {
   name: string;
   seed?: string;
   size?: number;
   shiny?: boolean;
   className?: string;
+  /** True when the mon has no approved artwork yet: frosts the sprite and
+   *  stamps a "?" on top so chat can tell the picture is still missing. */
+  needsArt?: boolean;
 }) {
   const pixels = useMemo(() => buildSprite(name, seed ?? name, shiny), [name, seed, shiny]);
-  return (
+
+  // Blur scales with the rendered size so the frost reads the same whether
+  // the sprite is a 36px toast bubble or a 100px detail header; the slight
+  // scale-up stops the gaussian bleed from shrinking the silhouette.
+  const svg = (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       width={size}
       height={size}
       shapeRendering="crispEdges"
       className={className}
+      style={needsArt ? { filter: `blur(${Math.max(2, Math.round(size * 0.035))}px)`, transform: "scale(1.08)" } : undefined}
       role="img"
-      aria-label={`Pixel sprite of ${name}`}
+      aria-label={needsArt ? `Placeholder sprite of ${name} — artwork still needed` : `Pixel sprite of ${name}`}
     >
       {pixels.map((p) => (
         <rect key={`${p.x},${p.y}`} x={p.x} y={p.y} width={1.02} height={1.02} fill={p.c} />
       ))}
     </svg>
+  );
+
+  if (!needsArt) return svg;
+
+  return (
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+      {svg}
+      <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
+        <span
+          className="font-display flex items-center justify-center rounded-full border-2 border-white bg-white/85 font-black text-foreground/75 shadow-[0_1px_6px_rgba(0,0,0,0.14)]"
+          style={{
+            width: Math.round(size * 0.52),
+            height: Math.round(size * 0.52),
+            fontSize: Math.round(size * 0.3),
+            lineHeight: 1,
+            paddingBottom: Math.round(size * 0.02),
+          }}
+        >
+          ?
+        </span>
+      </span>
+    </span>
   );
 }
