@@ -39,6 +39,26 @@ export const MAX_NICKNAME = 30;
 export const MAX_IMAGE_MB = 2;
 export const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
+/**
+ * Chat bots that post automated messages — their lines must NEVER count as
+ * spots (a loyalty/alert line containing a "mon" word would otherwise be
+ * credited to the bot as author). Checked against the IRC login name AND
+ * display name, case-insensitive. The discover_mon RPC enforces the same
+ * list server-side (migration 0006); worker + browser skip bots even earlier
+ * via isBotAuthor before matching.
+ */
+export const BOT_AUTHORS = [
+  "streamelements",
+  "nightbot",
+  "moobot",
+  "streamlabs",
+  "fossabot",
+];
+
+export function isBotAuthor(author: string): boolean {
+  return BOT_AUTHORS.includes(author.toLowerCase());
+}
+
 export type Mon = {
   id: string;
   pokedex_no: number;

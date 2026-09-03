@@ -18,7 +18,7 @@
  *                 -> feeds a synthetic chat line through the real pipeline
  *                    (ops/testing only; gated by a secret token)
  */
-import { TWITCH_CHANNEL, canonicalize, buildTriggerRegex, findMonInText } from "../../../src/lib/mons";
+import { TWITCH_CHANNEL, canonicalize, buildTriggerRegex, findMonInText, isBotAuthor } from "../../../src/lib/mons";
 import {
   IRC_WS_URL,
   SpotReporter,
@@ -58,6 +58,7 @@ export class ChatListener {
   private lastMessageAt: number | null = null;
   private msgsScanned = 0;
   private matchesFound = 0;
+  private botsSkipped = 0;
   private reconnects = 0;
   private attempts = 0;
   private triggers: string[] = [];
@@ -218,6 +219,12 @@ export class ChatListener {
       scanned++;
       this.msgsScanned++;
       this.lastMessageAt = Date.now();
+      // chat bots never count as spotters — their automated lines can contain
+      // "mon" words that would otherwise be credited to e.g. @StreamElements
+      if (isBotAuthor(msg.user) || isBotAuthor(msg.displayName)) {
+        this.botsSkipped++;
+        continue;
+      }
       const canon = findMonInText(msg.text, this.regex, this.reserved);
       if (canon) {
         matched = canon;
@@ -274,6 +281,7 @@ export class ChatListener {
         : null,
       msgsScanned: this.msgsScanned,
       matchesFound: this.matchesFound,
+      botsSkipped: this.botsSkipped,
       reconnects: this.reconnects,
       triggers: this.triggers,
       reservedCount: this.reserved.length,

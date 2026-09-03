@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { buildTriggerRegex, findMonInText } from "./mons";
+import { buildTriggerRegex, findMonInText, isBotAuthor } from "./mons";
 
 export type TwitchStatus = "idle" | "connecting" | "live" | "reconnecting";
 export type ChatMessage = {
@@ -149,6 +149,9 @@ export function useTwitchChat({ channel, triggers, reserved = [], enabled = true
         const msg = parseIrcLine(line);
         if (!msg) continue;
         if (!msg.text) continue;
+        // chat bots never count as spotters (same rule as the worker —
+        // automated StreamElements/nightbot lines can contain "mon" words)
+        if (isBotAuthor(msg.user) || isBotAuthor(msg.displayName)) continue;
         // admin trigger words first, then ANY word ending in "mon" (minus reserved)
         const canonical = findMonInText(msg.text, regexRef.current, reservedRef.current);
         if (canonical) {

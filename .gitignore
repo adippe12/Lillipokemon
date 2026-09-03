@@ -1,2 +1,7 @@
 skills/
 node_modules/
+scripts/
+worklog.md
+.next/
+.next-export/
+db/

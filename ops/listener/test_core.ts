@@ -15,6 +15,8 @@ import {
   canonicalize,
   findMonInText,
   isAllowedMonName,
+  isBotAuthor,
+  BOT_AUTHORS,
   DEFAULT_RESERVED,
 } from "../../src/lib/mons";
 
@@ -66,6 +68,12 @@ check("open: word after punctuation", findMonInText("(zedmon)", re2, reserved) =
 check("open: rejects xyzmon_suffix", findMonInText("blobmonster", re2, reserved) === null);
 check("open: pokmon (poké stripped)", findMonInText("pokémon", re2, reserved) === null);
 check("isAllowedMonName unit", isAllowedMonName("zzzmon", reserved) === true && isAllowedMonName("demon", reserved) === false);
+
+// ---- bot authors never count as spotters ----
+check("bot: streamelements blocked (any case)", isBotAuthor("StreamElements") && isBotAuthor("streamelements"));
+check("bot: all list entries blocked", BOT_AUTHORS.every((b) => isBotAuthor(b)));
+check("bot: nightbot with odd casing blocked", isBotAuthor("NightBot"));
+check("bot: humans never blocked", !isBotAuthor("lillimon_") && !isBotAuthor("SomeViewer") && !isBotAuthor(""));
 
 // ---- parseIrcLine ----
 const line =
