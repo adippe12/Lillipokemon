@@ -5,3 +5,5 @@ worklog.md
 .next/
 .next-export/
 db/
+.env.local
+.env*.local
