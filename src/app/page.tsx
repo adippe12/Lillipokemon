@@ -87,7 +87,8 @@ function celebrate() {
 }
 
 // ---- hero typewriter: cycles through playful example species ----
-const EXAMPLE_WORDS = ["blobmon", "noodlemon", "grumpymon", "chaosmon", "teacupmon"];
+// suggestions always follow the adjective+mon pattern: crazymon, latemon, luckymon
+const EXAMPLE_WORDS = ["crazymon", "latemon", "luckymon"];
 
 function useTypewriter(words: string[]): string {
   const [typed, setTyped] = useState("");
@@ -746,7 +747,7 @@ export default function PokedexPage() {
               <p className="font-display text-base font-bold text-foreground">No mons yet…</p>
               <p className="font-soft mt-2 text-base font-semibold text-muted-foreground">
                 Type <span className="font-bold text-primary">any word ending in &ldquo;mon&rdquo;</span> in{" "}
-                {TWITCH_CHANNEL}&apos;s chat — blobmon, gutmon, whatevermon!
+                {TWITCH_CHANNEL}&apos;s chat — crazymon, latemon, luckymon!
               </p>
             </div>
           ) : visibleMons.length === 0 ? (

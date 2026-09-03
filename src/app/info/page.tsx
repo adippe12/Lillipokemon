@@ -26,7 +26,7 @@ const STEPS = [
   {
     icon: <MessageCircle className="h-5 w-5 text-primary" />,
     title: "Type it in chat",
-    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: blobmon, teacupmon, grumpymon… whatevermon! The classic mons — sillymon, eepymon and sleepymon — work too.`,
+    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: crazymon, latemon, luckymon… the sillier the better! The classic mons — sillymon, eepymon and sleepymon — work too.`,
   },
   {
     icon: <Radio className="h-5 w-5 text-pokedex-cyan" />,
@@ -137,7 +137,7 @@ export default function InfoPage() {
               research all come from the community, one message at a time.
             </p>
             <div className="mt-4 flex items-end gap-4" aria-hidden>
-              {["blobmon", "teacupmon", "grumpymon"].map((w, i) => (
+              {["crazymon", "latemon", "luckymon"].map((w, i) => (
                 <div
                   key={w}
                   className="floaty flex h-14 w-14 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.12)]"
