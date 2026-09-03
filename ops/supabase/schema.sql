@@ -153,6 +153,8 @@ end $$;
 grant execute on function public.discover_mon(text, text) to anon, authenticated;
 
 -- 8) Review RPC (admin approves / rejects proposals) ----------
+-- The decision is applied to the species, then the proposal row is
+-- DELETED — the DB keeps no reviewed rows (tidy by construction).
 create or replace function public.review_proposal(
   p_proposal_id uuid,
   p_approve boolean,
@@ -169,10 +171,7 @@ begin
 
   select * into rec from proposals where id = p_proposal_id for update;
   if not found then
-    raise exception 'Proposal not found';
-  end if;
-  if rec.status <> 'pending' then
-    return; -- already reviewed
+    return; -- already reviewed (row gone); nothing to do
   end if;
 
   if p_approve then
@@ -188,9 +187,7 @@ begin
     end if;
   end if;
 
-  update proposals
-     set status = case when p_approve then 'approved' else 'rejected' end
-   where id = p_proposal_id;
+  delete from proposals where id = p_proposal_id;
 end $$;
 
 grant execute on function public.review_proposal(uuid, boolean, text) to authenticated;
@@ -241,9 +238,9 @@ drop policy if exists "proposals_insert_public" on public.proposals;
 create policy "proposals_insert_public" on public.proposals for insert
   with check (kind in ('description','image') and char_length(content) between 1 and 600);
 
+-- reviewed proposals are deleted on review; the public never reads
+-- proposals at all (no public select policy)
 drop policy if exists "proposals_read_approved" on public.proposals;
-create policy "proposals_read_approved" on public.proposals for select
-  using (status = 'approved');
 
 drop policy if exists "proposals_admin_read" on public.proposals;
 create policy "proposals_admin_read" on public.proposals for select
