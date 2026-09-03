@@ -15,7 +15,7 @@ export type FeedEvent = {
 
 /**
  * "CHAT BUZZ" — a slim horizontal ticker of what chat is doing right now:
- * new friends discovered + spotting sprees, as cute scrollable pills.
+ * new mons discovered + spotting sprees, as cute scrollable pills.
  * Sits between the hero and the dex grid without stealing the spotlight:
  * the mons stay the focus of the page. Self-contained: re-renders every
  * 10s so relative timestamps stay fresh.

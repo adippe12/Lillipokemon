@@ -34,7 +34,6 @@ import {
   FlaskConical,
   Heart,
   Info,
-  Radio,
   RotateCcw,
   Search,
   Sparkles,
@@ -371,10 +370,9 @@ export default function PokedexPage() {
 
   // ---- twitch chat mirror (READ-ONLY) ----
   // The 24/7 cloud worker is the SINGLE writer to Supabase. The browser only
-  // mirrors the chat locally: every read message feeds the "scanned by you"
-  // pill (inside useTwitchChat) and a local match gives instant CHAT BUZZ
-  // feedback — deduped against the realtime UPDATE that arrives a moment
-  // later from the worker's report (same event id, 25s window).
+  // mirrors the chat locally: a local match gives instant CHAT BUZZ feedback,
+  // deduped against the realtime UPDATE that arrives a moment later from the
+  // worker's report (same event id, 25s window).
   const handleMatch = useCallback(
     (msg: ChatMessage, canonical: string) => {
       const by = msg.displayName || msg.user;
@@ -383,7 +381,7 @@ export default function PokedexPage() {
     [addFeed]
   );
 
-  const { status, scanned } = useTwitchChat({
+  const { status } = useTwitchChat({
     channel: TWITCH_CHANNEL,
     triggers,
     reserved,
@@ -431,9 +429,8 @@ export default function PokedexPage() {
 
   // ---- derived data ----
   const stats = useMemo(() => {
-    const spots = mons.reduce((acc, m) => acc + m.spotted_count, 0);
     const inReview = Object.values(pending).reduce((a, b) => a + b, 0);
-    return { species: mons.length, spots, inReview };
+    return { species: mons.length, inReview };
   }, [mons, pending]);
 
   const latest = useMemo(() => {
@@ -574,7 +571,7 @@ export default function PokedexPage() {
                 </p>
                 <h2 className="font-display max-w-xl text-xl font-extrabold leading-snug text-foreground sm:text-2xl">
                   Every little <span className="text-primary">mon</span> typed in chat
-                  <br className="hidden sm:block" /> becomes a new friend here
+                  <br className="hidden sm:block" /> becomes a new mon here
                 </h2>
                 <p className="font-soft text-base font-semibold text-muted-foreground" aria-hidden>
                   try: <span className="font-bold text-primary">{typed}</span>
@@ -605,27 +602,16 @@ export default function PokedexPage() {
 
         {/* stat pills + chat buzz ticker */}
         <section aria-label="Dex stats and live activity" className="mb-6 space-y-3">
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5">
             <StatPill
               icon={<Heart className="h-4 w-4 text-primary" />}
-              label="friends"
+              label="mons"
               value={loading ? null : stats.species}
-            />
-            <StatPill
-              icon={<Sparkles className="h-4 w-4 text-pokedex-yellow" />}
-              label="sightings"
-              value={loading ? null : stats.spots}
             />
             <StatPill
               icon={<FlaskConical className="h-4 w-4 text-[#8a6fd1]" />}
               label="in review"
               value={loading ? null : stats.inReview}
-            />
-            <StatPill
-              icon={<Radio className="h-4 w-4 text-pokedex-cyan" />}
-              label="scanned by you"
-              value={scanned}
-              accent="cyan"
             />
           </div>
           <LiveWire events={feed} />
@@ -661,7 +647,7 @@ export default function PokedexPage() {
               </div>
               <div>
                 {toast.isNew ? (
-                  <p className="font-display text-xs font-extrabold text-primary">NEW FRIEND DISCOVERED!</p>
+                  <p className="font-display text-xs font-extrabold text-primary">NEW MON DISCOVERED!</p>
                 ) : (
                   <p className="font-display text-xs font-extrabold text-pokedex-cyan">SPOTTED AGAIN!</p>
                 )}
@@ -685,7 +671,7 @@ export default function PokedexPage() {
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <h2 className="font-display mb-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">
               <BookOpen className="mr-2 inline h-4 w-4 text-primary" />
-              Dex friends — {stats.species}
+              Dex mons — {stats.species}
             </h2>
             {query.trim() !== "" && (
               <span className="font-soft text-xs font-bold text-muted-foreground">
@@ -757,7 +743,7 @@ export default function PokedexPage() {
                   </div>
                 ))}
               </div>
-              <p className="font-display text-base font-bold text-foreground">No friends yet…</p>
+              <p className="font-display text-base font-bold text-foreground">No mons yet…</p>
               <p className="font-soft mt-2 text-base font-semibold text-muted-foreground">
                 Type <span className="font-bold text-primary">any word ending in &ldquo;mon&rdquo;</span> in{" "}
                 {TWITCH_CHANNEL}&apos;s chat — blobmon, gutmon, whatevermon!
@@ -794,7 +780,7 @@ export default function PokedexPage() {
             className="font-soft group flex items-center justify-center gap-2 rounded-full border-2 border-border bg-white/80 px-5 py-3.5 text-center text-sm font-bold text-foreground shadow-[0_4px_14px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
           >
             <BookOpen className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            Curious? See how friends are born, how to add research &amp; more
+            Curious? See how mons are born, how to add research &amp; more
             <span aria-hidden className="text-primary transition-transform group-hover:translate-x-0.5">
               →
             </span>
@@ -848,12 +834,10 @@ function StatPill({
   icon,
   label,
   value,
-  accent,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number | null;
-  accent?: "cyan";
 }) {
   const v = useCountUp(value ?? 0);
   return (
@@ -861,11 +845,7 @@ function StatPill({
       <span className="shrink-0" aria-hidden>
         {icon}
       </span>
-      <p
-        className={`font-display whitespace-nowrap text-lg font-extrabold sm:text-xl ${
-          accent === "cyan" ? "text-pokedex-cyan" : "text-primary"
-        }`}
-      >
+      <p className="font-display whitespace-nowrap text-lg font-extrabold text-primary sm:text-xl">
         {value === null ? "…" : formatNumber(v)}
       </p>
       <p className="font-soft text-left text-[11px] leading-tight font-bold tracking-wide text-muted-foreground uppercase">
@@ -875,7 +855,7 @@ function StatPill({
   );
 }
 
-/** Cute spotlight card in the hero: the most recently spotted friend. */
+/** Cute spotlight card in the hero: the most recently spotted mon. */
 function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) => void }) {
   if (!mon) {
     return (
@@ -891,7 +871,7 @@ function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) =
             </div>
           ))}
         </div>
-        <p className="font-soft text-[11px] font-bold text-muted-foreground">friends will pop up here!</p>
+        <p className="font-soft text-[11px] font-bold text-muted-foreground">mons will pop up here!</p>
       </div>
     );
   }
@@ -900,10 +880,10 @@ function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) =
     <button
       onClick={() => onOpen(mon.id)}
       className="candy-card group relative flex w-full shrink-0 items-center gap-3.5 rounded-3xl px-4 py-4 text-left sm:w-[300px]"
-      aria-label={`Open ${mon.name} entry — the latest friend`}
+      aria-label={`Open ${mon.name} entry — the latest mon`}
     >
       <span className="font-display absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold whitespace-nowrap text-primary-foreground shadow-[0_2px_8px_rgba(240,107,168,0.4)]">
-        LATEST FRIEND
+        LATEST MON
       </span>
       <div
         className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_12px_rgba(240,107,168,0.14)]"

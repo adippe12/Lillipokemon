@@ -18,13 +18,13 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "LILLIPEDEX — Live Pokedex for lillimon_",
   description:
-    "A sweet live Pokedex that watches Twitch chat of lillimon_. Every 'sillymon', 'eepymon' or any word ending in 'mon' becomes a new friend. Propose descriptions and artwork, reviewed by the channel team.",
+    "A sweet live Pokedex that watches Twitch chat of lillimon_. Every 'sillymon', 'eepymon' or any word ending in 'mon' becomes a new mon. Propose descriptions and artwork, reviewed by the channel team.",
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
     title: "LILLIPEDEX",
-    description: "Live creature discovery from Twitch chat — every mention becomes a new friend.",
+    description: "Live creature discovery from Twitch chat — every mention becomes a new mon.",
     type: "website",
   },
 };

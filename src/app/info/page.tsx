@@ -19,14 +19,14 @@ import {
 export const metadata: Metadata = {
   title: "Info — LILLIPEDEX",
   description:
-    "How the live LILLIPEDEX works: how friends are born from Twitch chat, how to add research and artwork, and how every submission stays safe.",
+    "How the live LILLIPEDEX works: how mons are born from Twitch chat, how to add research and artwork, and how every submission stays safe.",
 };
 
 const STEPS = [
   {
     icon: <MessageCircle className="h-5 w-5 text-primary" />,
     title: "Type it in chat",
-    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: blobmon, teacupmon, grumpymon… whatevermon! The classic friends — sillymon, eepymon and sleepymon — work too.`,
+    body: `Drop any word ending in "mon" into #${TWITCH_CHANNEL}'s chat: blobmon, teacupmon, grumpymon… whatevermon! The classic mons — sillymon, eepymon and sleepymon — work too.`,
   },
   {
     icon: <Radio className="h-5 w-5 text-pokedex-cyan" />,
@@ -36,12 +36,12 @@ const STEPS = [
   {
     icon: <Sparkles className="h-5 w-5 text-pokedex-yellow" />,
     title: "The species is born",
-    body: "A brand-new entry appears with the next free dex number and its own procedurally generated look. Your chat nickname is saved forever as the discoverer — proof that this friend is yours.",
+    body: "A brand-new entry appears with the next free dex number and its own procedurally generated look. Your chat nickname is saved forever as the discoverer — proof that this mon is yours.",
   },
   {
     icon: <Heart className="h-5 w-5 text-primary" />,
     title: "It grows with every mention",
-    body: "Each future mention bumps the friend's spotted counter, so the most beloved creatures climb the popularity chart inside their entry. Chat literally raises these friends together.",
+    body: "Each future mention bumps the mon's spotted counter, so the most beloved creatures climb the popularity chart inside their entry. Chat literally raises these mons together.",
   },
 ];
 
@@ -55,7 +55,7 @@ const FAQ = [
     a: 'Most likely it is a reserved everyday word that just happens to end in "mon" — like lemon, salmon, demon, common, summon, cinnamon or pokemon — or it contains a filtered word. Try a sillier name!',
   },
   {
-    q: "Do I need the site open to discover friends?",
+    q: "Do I need the site open to discover mons?",
     a: "No — the 24/7 listener catches everything and the dex keeps growing on its own. Opening the site just lets you enjoy the live celebrations: toasts, sounds, confetti and the CHAT BUZZ ticker.",
   },
   {
@@ -151,8 +151,8 @@ export default function InfoPage() {
         </div>
 
         <div className="space-y-4">
-          {/* how a friend is born */}
-          <SectionCard icon={<Sparkles className="h-5 w-5 text-primary" />} title="How a friend is born">
+          {/* how a mon is born */}
+          <SectionCard icon={<Sparkles className="h-5 w-5 text-primary" />} title="How a mon is born">
             <ol className="space-y-4">
               {STEPS.map((s, i) => (
                 <li key={s.title} className="flex items-start gap-3.5">
@@ -177,7 +177,7 @@ export default function InfoPage() {
           <SectionCard icon={<FlaskConical className="h-5 w-5 text-pokedex-yellow" />} title="Make it yours: community research">
             <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
               <p className="font-soft font-semibold">
-                Every entry is a little canvas. Open any friend in the dex and become its researcher:
+                Every entry is a little canvas. Open any mon in the dex and become its researcher:
               </p>
               <ul className="space-y-2.5">
                 <li className="flex items-start gap-2.5">
@@ -245,7 +245,7 @@ export default function InfoPage() {
               className="font-soft flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-[0_6px_18px_rgba(240,107,168,0.35)] transition hover:bg-[#d5518d]"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
-              back to the dex — say hi to the friends!
+              back to the dex — say hi to the mons!
             </a>
             <a
               href={`https://twitch.tv/${TWITCH_CHANNEL}`}

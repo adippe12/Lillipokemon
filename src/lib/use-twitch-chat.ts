@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { buildTriggerRegex, findMonInText } from "./mons";
 
 export type TwitchStatus = "idle" | "connecting" | "live" | "reconnecting";
-
 export type ChatMessage = {
   id: string;
   user: string;
@@ -63,7 +62,6 @@ type UseTwitchChatOpts = {
  */
 export function useTwitchChat({ channel, triggers, reserved = [], enabled = true, onMatch }: UseTwitchChatOpts) {
   const [status, setStatus] = useState<TwitchStatus>("idle");
-  const [scanned, setScanned] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,7 +148,6 @@ export function useTwitchChat({ channel, triggers, reserved = [], enabled = true
         if (!line.includes(" PRIVMSG ")) continue;
         const msg = parseIrcLine(line);
         if (!msg) continue;
-        if (mounted.current) setScanned((s) => s + 1);
         if (!msg.text) continue;
         // admin trigger words first, then ANY word ending in "mon" (minus reserved)
         const canonical = findMonInText(msg.text, regexRef.current, reservedRef.current);
@@ -209,5 +206,5 @@ export function useTwitchChat({ channel, triggers, reserved = [], enabled = true
     };
   }, [connect, clearTimers]);
 
-  return { status, scanned };
+  return { status };
 }
