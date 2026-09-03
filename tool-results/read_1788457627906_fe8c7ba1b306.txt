@@ -1,0 +1,635 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→     4→import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
+     5→     5→import { type Mon, type Proposal, displayName, pokedexNumber, formatDate, canonicalize, MAX_IMAGE_MB, ALLOWED_IMAGE_TYPES } from "@/lib/mons";
+     6→     6→import { Button } from "@/components/ui/button";
+     7→     7→import { Input } from "@/components/ui/input";
+     8→     8→import { Textarea } from "@/components/ui/textarea";
+     9→     9→import { Label } from "@/components/ui/label";
+    10→    10→import { Badge } from "@/components/ui/badge";
+    11→    11→import { Skeleton } from "@/components/ui/skeleton";
+    12→    12→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    13→    13→import { Alert, AlertDescription } from "@/components/ui/alert";
+    14→    14→import {
+    15→    15→  AlertDialog,
+    16→    16→  AlertDialogAction,
+    17→    17→  AlertDialogCancel,
+    18→    18→  AlertDialogContent,
+    19→    19→  AlertDialogDescription,
+    20→    20→  AlertDialogFooter,
+    21→    21→  AlertDialogHeader,
+    22→    22→  AlertDialogTitle,
+    23→    23→} from "@/components/ui/alert-dialog";
+    24→    24→import { MonSprite, spriteBubbleBg } from "@/components/mon-sprite";
+    25→    25→import {
+    26→    26→  Check,
+    27→    27→  ExternalLink,
+    28→    28→  Eye,
+    29→    29→  EyeOff,
+    30→    30→  Image as ImageIcon,
+    31→    31→  Loader2,
+    32→    32→  LogOut,
+    33→    33→  PenLine,
+    34→    34→  RefreshCw,
+    35→    35→  Trash2,
+    36→    36→  X,
+    37→    37→} from "lucide-react";
+    38→    38→
+    39→    39→type EnrichedProposal = Proposal & { mon?: Mon };
+    40→    40→
+    41→    41→export default function AdminPage() {
+    42→    42→  const [email, setEmail] = useState("");
+    43→    43→  const [password, setPassword] = useState("");
+    44→    44→  const [showPass, setShowPass] = useState(false);
+    45→    45→  const [session, setSession] = useState<unknown>(null);
+    46→    46→  const [authState, setAuthState] = useState<"loading" | "out" | "in">(
+    47→    47→    supabaseConfigured ? "loading" : "out"
+    48→    48→  );
+    49→    49→  const [authError, setAuthError] = useState<string | null>(null);
+    50→    50→  const [signingIn, setSigningIn] = useState(false);
+    51→    51→
+    52→    52→  useEffect(() => {
+    53→    53→    if (!supabaseConfigured) return;
+    54→    54→    supabase.auth.getSession().then(({ data }) => {
+    55→    55→      setSession(data.session);
+    56→    56→      setAuthState(data.session ? "in" : "out");
+    57→    57→    });
+    58→    58→    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    59→    59→      setSession(s);
+    60→    60→      setAuthState(s ? "in" : "out");
+    61→    61→    });
+    62→    62→    return () => sub.subscription.unsubscribe();
+    63→    63→  }, []);
+    64→    64→
+    65→    65→  async function signIn(e: React.FormEvent) {
+    66→    66→    e.preventDefault();
+    67→    67→    setAuthError(null);
+    68→    68→    setSigningIn(true);
+    69→    69→    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    70→    70→    if (error) setAuthError(error.message);
+    71→    71→    setSigningIn(false);
+    72→    72→  }
+    73→    73→
+    74→    74→  return (
+    75→    75→    <div className="flex min-h-screen flex-col bg-background">
+    76→    76→      <header className="border-b border-border bg-secondary/40">
+    77→    77→        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+    78→    78→          <h1 className="font-display text-xs text-foreground">
+    79→    79→            LILLI<span className="text-primary">PEDEX</span>{" "}
+    80→    80→            <span className="text-muted-foreground">/ team console</span>
+    81→    81→          </h1>
+    82→    82→          <div className="flex items-center gap-3">
+    83→    83→            <a href="/" className="font-soft flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    84→    84→              Back to dex <ExternalLink className="h-3 w-3" />
+    85→    85→            </a>
+    86→    86→            {authState === "in" && (
+    87→    87→              <Button variant="ghost" size="sm" className="font-soft" onClick={() => supabase.auth.signOut()}>
+    88→    88→                <LogOut className="mr-1 h-3.5 w-3.5" /> Sign out
+    89→    89→              </Button>
+    90→    90→            )}
+    91→    91→          </div>
+    92→    92→        </div>
+    93→    93→      </header>
+    94→    94→
+    95→    95→      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+    96→    96→        {authState === "loading" && (
+    97→    97→          <div className="mx-auto max-w-sm space-y-3">
+    98→    98→            <Skeleton className="h-8 w-2/3 bg-secondary" />
+    99→    99→            <Skeleton className="h-10 bg-secondary" />
+   100→   100→            <Skeleton className="h-10 bg-secondary" />
+   101→   101→          </div>
+   102→   102→        )}
+   103→   103→        {authState === "out" && (
+   104→   104→          <div className="mx-auto max-w-sm rounded-xl border border-border bg-card p-6">
+   105→   105→            <h2 className="font-display mb-4 text-[11px] uppercase text-muted-foreground">Team sign-in</h2>
+   106→   106→            <form onSubmit={signIn} className="space-y-4">
+   107→   107→              <div className="space-y-1.5">
+   108→   108→                <Label htmlFor="email" className="font-soft">Email</Label>
+   109→   109→                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary/70 font-soft" />
+   110→   110→              </div>
+   111→   111→              <div className="space-y-1.5">
+   112→   112→                <Label htmlFor="password" className="font-soft">Password</Label>
+   113→   113→                <div className="relative">
+   114→   114→                  <Input
+   115→   115→                    id="password"
+   116→   116→                    type={showPass ? "text" : "password"}
+   117→   117→                    required
+   118→   118→                    value={password}
+   119→   119→                    onChange={(e) => setPassword(e.target.value)}
+   120→   120→                    className="bg-secondary/70 pr-10 font-soft"
+   121→   121→                  />
+   122→   122→                  <button type="button" aria-label={showPass ? "Hide password" : "Show password"} onClick={() => setShowPass((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground">
+   123→   123→                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   124→   124→                  </button>
+   125→   125→                </div>
+   126→   126→              </div>
+   127→   127→              {authError && <p className="font-soft text-sm text-destructive">{authError}</p>}
+   128→   128→              <Button type="submit" disabled={signingIn} className="font-display w-full text-[11px] uppercase hover:bg-pokedex-dark-red">
+   129→   129→                {signingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Sign in
+   130→   130→              </Button>
+   131→   131→            </form>
+   132→   132→          </div>
+   133→   133→        )}
+   134→   134→        {authState === "in" && <Console />}
+   135→   135→      </main>
+   136→   136→    </div>
+   137→   137→  );
+   138→   138→}
+   139→   139→
+   140→   140→function Console() {
+   141→   141→  const [proposals, setProposals] = useState<EnrichedProposal[]>([]);
+   142→   142→  const [mons, setMons] = useState<Mon[]>([]);
+   143→   143→  const [loading, setLoading] = useState(true);
+   144→   144→  const [msg, setMsg] = useState<string | null>(null);
+   145→   145→  const [busyId, setBusyId] = useState<string | null>(null);
+   146→   146→  const [removeTarget, setRemoveTarget] = useState<Mon | null>(null);
+   147→   147→  const [removing, setRemoving] = useState(false);
+   148→   148→  const [editId, setEditId] = useState<string | null>(null);
+   149→   149→
+   150→   150→  const load = useCallback(async () => {
+   151→   151→    const [{ data: props }, { data: monsData }] = await Promise.all([
+   152→   152→      supabase.from("proposals").select("*").order("created_at", { ascending: false }),
+   153→   153→      supabase.from("mons").select("*").order("pokedex_no", { ascending: true }),
+   154→   154→    ]);
+   155→   155→    const monMap = new Map<string, Mon>((monsData ?? []).map((m) => [m.id, m as Mon]));
+   156→   156→    setMons((monsData ?? []) as Mon[]);
+   157→   157→    setProposals(
+   158→   158→      ((props ?? []) as Proposal[]).map((p) => ({ ...p, mon: monMap.get(p.mon_id) }))
+   159→   159→    );
+   160→   160→    setLoading(false);
+   161→   161→  }, []);
+   162→   162→
+   163→   163→  useEffect(() => {
+   164→   164→    void load();
+   165→   165→    const channel = supabase
+   166→   166→      .channel("admin-live")
+   167→   167→      .on("postgres_changes", { event: "*", schema: "public", table: "proposals" }, () => void load())
+   168→   168→      .on("postgres_changes", { event: "*", schema: "public", table: "mons" }, () => void load())
+   169→   169→      .subscribe();
+   170→   170→    return () => {
+   171→   171→      supabase.removeChannel(channel);
+   172→   172→    };
+   173→   173→  }, [load]);
+   174→   174→
+   175→   175→  const pendingDesc = useMemo(() => proposals.filter((p) => p.status === "pending" && p.kind === "description"), [proposals]);
+   176→   176→  const pendingImg = useMemo(() => proposals.filter((p) => p.status === "pending" && p.kind === "image"), [proposals]);
+   177→   177→
+   178→   178→  async function review(p: EnrichedProposal, approve: boolean) {
+   179→   179→    setBusyId(p.id);
+   180→   180→    setMsg(null);
+   181→   181→    try {
+   182→   182→      let finalPath: string | null = null;
+   183→   183→      if (approve && p.kind === "image" && p.mon) {
+   184→   184→        const newName = `approved/${p.mon.name}/${p.id}.${p.content.split(".").pop() ?? "png"}`;
+   185→   185→        const { error: moveErr } = await supabase.storage.from(MON_IMAGES_BUCKET).move(p.content, newName);
+   186→   186→        if (moveErr) throw new Error(`Move failed: ${moveErr.message}`);
+   187→   187→        finalPath = newName;
+   188→   188→      }
+   189→   189→      const { error } = await supabase.rpc("review_proposal", {
+   190→   190→        p_proposal_id: p.id,
+   191→   191→        p_approve: approve,
+   192→   192→        p_final_image_path: finalPath,
+   193→   193→      });
+   194→   194→      if (error) throw error;
+   195→   195→      if (!approve && p.kind === "image") {
+   196→   196→        await supabase.storage.from(MON_IMAGES_BUCKET).remove([p.content]).catch(() => {});
+   197→   197→      }
+   198→   198→      setMsg(approve ? "Approved and published." : "Rejected.");
+   199→   199→      await load();
+   200→   200→    } catch (e) {
+   201→   201→      setMsg(e instanceof Error ? e.message : "Action failed");
+   202→   202→    } finally {
+   203→   203→      setBusyId(null);
+   204→   204→    }
+   205→   205→  }
+   206→   206→
+   207→   207→  async function clearField(mon: Mon, field: "description" | "image") {
+   208→   208→    setBusyId(mon.id);
+   209→   209→    const { error } = await supabase.rpc("clear_mon_field", { p_mon_id: mon.id, p_field: field });
+   210→   210→    setMsg(error ? error.message : `${field} cleared.`);
+   211→   211→    await load();
+   212→   212→    setBusyId(null);
+   213→   213→  }
+   214→   214→
+   215→   215→  async function removeMon(mon: Mon) {
+   216→   216→    setRemoving(true);
+   217→   217→    setMsg(null);
+   218→   218→    try {
+   219→   219→      // delete known image folders first (console has storage manage rights)
+   220→   220→      for (const prefix of [`pending/${mon.name}`, `approved/${mon.name}`]) {
+   221→   221→        const { data: objs } = await supabase.storage.from(MON_IMAGES_BUCKET).list(prefix);
+   222→   222→        const paths = (objs ?? []).map((o) => `${prefix}/${o.name}`);
+   223→   223→        if (paths.length) {
+   224→   224→          await supabase.storage.from(MON_IMAGES_BUCKET).remove(paths).catch(() => {});
+   225→   225→        }
+   226→   226→      }
+   227→   227→      const { error } = await supabase.rpc("delete_mon", { p_mon_id: mon.id });
+   228→   228→      if (error) throw error;
+   229→   229→      setMsg(`${displayName(mon.name)} removed — entry, proposals, images and its trigger word are gone.`);
+   230→   230→      setRemoveTarget(null);
+   231→   231→      await load();
+   232→   232→    } catch (e) {
+   233→   233→      setMsg(e instanceof Error ? e.message : "Remove failed");
+   234→   234→    } finally {
+   235→   235→      setRemoving(false);
+   236→   236→    }
+   237→   237→  }
+   238→   238→
+   239→   239→  return (
+   240→   240→    <div className="space-y-6">
+   241→   241→      {msg && (
+   242→   242→        <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
+   243→   243→          <AlertDescription className="font-soft text-sm">{msg}</AlertDescription>
+   244→   244→        </Alert>
+   245→   245→      )}
+   246→   246→      <div className="flex items-center justify-between">
+   247→   247→        <h2 className="font-display text-xs uppercase text-muted-foreground">
+   248→   248→          Research queue — {pendingDesc.length + pendingImg.length} pending
+   249→   249→        </h2>
+   250→   250→        <Button variant="ghost" size="sm" className="font-soft" onClick={() => void load()}>
+   251→   251→          <RefreshCw className="mr-1 h-3.5 w-3.5" /> Refresh
+   252→   252→        </Button>
+   253→   253→      </div>
+   254→   254→
+   255→   255→      <Tabs defaultValue="descriptions">
+   256→   256→        <TabsList className="bg-secondary">
+   257→   257→          <TabsTrigger value="descriptions" className="font-soft gap-1.5">
+   258→   258→            <PenLine className="h-4 w-4" /> Descriptions ({pendingDesc.length})
+   259→   259→          </TabsTrigger>
+   260→   260→          <TabsTrigger value="images" className="font-soft gap-1.5">
+   261→   261→            <ImageIcon className="h-4 w-4" /> Images ({pendingImg.length})
+   262→   262→          </TabsTrigger>
+   263→   263→          <TabsTrigger value="species" className="font-soft gap-1.5">
+   264→   264→            Species ({mons.length})
+   265→   265→          </TabsTrigger>
+   266→   266→        </TabsList>
+   267→   267→
+   268→   268→        <TabsContent value="descriptions" className="mt-4 space-y-3">
+   269→   269→          {loading ? (
+   270→   270→            <Skeleton className="h-24 bg-secondary" />
+   271→   271→          ) : pendingDesc.length === 0 ? (
+   272→   272→            <Empty text="No descriptions waiting for review." />
+   273→   273→          ) : (
+   274→   274→            pendingDesc.map((p) => (
+   275→   275→              <div key={p.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+   276→   276→                <div className="min-w-0 flex-1">
+   277→   277→                  <div className="mb-1 flex flex-wrap items-center gap-2">
+   278→   278→                    <Badge variant="secondary" className="font-soft">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
+   279→   279→                    <span className="font-soft text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
+   280→   280→                  </div>
+   281→   281→                  <p className="text-sm text-foreground">&ldquo;{p.content}&rdquo;</p>
+   282→   282→                </div>
+   283→   283→                <div className="flex shrink-0 gap-2">
+   284→   284→                  <Button size="sm" className="font-soft" onClick={() => void review(p, true)} disabled={busyId === p.id}>
+   285→   285→                    {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Approve
+   286→   286→                  </Button>
+   287→   287→                  <Button size="sm" variant="destructive" className="font-soft" onClick={() => void review(p, false)} disabled={busyId === p.id}>
+   288→   288→                    <X className="mr-1 h-4 w-4" /> Reject
+   289→   289→                  </Button>
+   290→   290→                </div>
+   291→   291→              </div>
+   292→   292→            ))
+   293→   293→          )}
+   294→   294→        </TabsContent>
+   295→   295→
+   296→   296→        <TabsContent value="images" className="mt-4 space-y-3">
+   297→   297→          {loading ? (
+   298→   298→            <Skeleton className="h-40 bg-secondary" />
+   299→   299→          ) : pendingImg.length === 0 ? (
+   300→   300→            <Empty text="No images waiting for review." />
+   301→   301→          ) : (
+   302→   302→            pendingImg.map((p) => (
+   303→   303→              <div key={p.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+   304→   304→                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary/70">
+   305→   305→                  <img src={publicImageUrl(p.content)} alt="Proposed artwork" className="max-h-28 max-w-28 object-contain" />
+   306→   306→                </div>
+   307→   307→                <div className="min-w-0 flex-1">
+   308→   308→                  <div className="mb-1 flex flex-wrap items-center gap-2">
+   309→   309→                    <Badge variant="secondary" className="font-soft">{p.mon ? displayName(p.mon.name) : "unknown mon"}</Badge>
+   310→   310→                    <span className="font-soft text-xs text-muted-foreground">by @{p.submitted_by} · {formatDate(p.created_at)}</span>
+   311→   311→                  </div>
+   312→   312→                  <p className="font-soft truncate text-xs text-muted-foreground">{p.content}</p>
+   313→   313→                </div>
+   314→   314→                <div className="flex shrink-0 gap-2">
+   315→   315→                  <Button size="sm" className="font-soft" onClick={() => void review(p, true)} disabled={busyId === p.id}>
+   316→   316→                    {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Approve
+   317→   317→                  </Button>
+   318→   318→                  <Button size="sm" variant="destructive" className="font-soft" onClick={() => void review(p, false)} disabled={busyId === p.id}>
+   319→   319→                    <X className="mr-1 h-4 w-4" /> Reject
+   320→   320→                  </Button>
+   321→   321→                </div>
+   322→   322→              </div>
+   323→   323→            ))
+   324→   324→          )}
+   325→   325→        </TabsContent>
+   326→   326→
+   327→   327→        <TabsContent value="species" className="mt-4 space-y-3">
+   328→   328→          {mons.map((m) => (
+   329→   329→            <div key={m.id} className="space-y-2">
+   330→   330→              <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+   331→   331→                <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border" style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}>
+   332→   332→                  {m.image_path ? (
+   333→   333→                    <img src={publicImageUrl(m.image_path)} alt="" className="h-14 w-14 object-contain" />
+   334→   334→                  ) : (
+   335→   335→                    <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={56} needsArt />
+   336→   336→                  )}
+   337→   337→                </div>
+   338→   338→                <div className="min-w-0 flex-1">
+   339→   339→                  <div className="flex flex-wrap items-center gap-2">
+   340→   340→                    <span className="font-soft text-sm text-muted-foreground">{pokedexNumber(m.pokedex_no)}</span>
+   341→   341→                    <span className="font-display text-[11px] uppercase">{displayName(m.name)}</span>
+   342→   342→                    <Badge variant="secondary" className="font-soft">{m.spotted_count} spotted</Badge>
+   343→   343→                    <Badge variant="secondary" className="font-soft">by @{m.discovered_by}</Badge>
+   344→   344→                  </div>
+   345→   345→                  {m.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">&ldquo;{m.description}&rdquo;</p>}
+   346→   346→                </div>
+   347→   347→                <div className="flex shrink-0 flex-wrap gap-2">
+   348→   348→                  <Button
+   349→   349→                    size="sm"
+   350→   350→                    variant="outline"
+   351→   351→                    className="font-soft"
+   352→   352→                    disabled={busyId === m.id}
+   353→   353→                    onClick={() => setEditId(editId === m.id ? null : m.id)}
+   354→   354→                  >
+   355→   355→                    <PenLine className="mr-1 h-3.5 w-3.5" /> Edit
+   356→   356→                  </Button>
+   357→   357→                  <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.description} onClick={() => void clearField(m, "description")}>
+   358→   358→                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear desc
+   359→   359→                  </Button>
+   360→   360→                  <Button size="sm" variant="outline" className="font-soft" disabled={busyId === m.id || !m.image_path} onClick={() => void clearField(m, "image")}>
+   361→   361→                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Clear art
+   362→   362→                  </Button>
+   363→   363→                  <Button size="sm" variant="destructive" className="font-soft" disabled={busyId === m.id} onClick={() => setRemoveTarget(m)}>
+   364→   364→                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove species
+   365→   365→                  </Button>
+   366→   366→                </div>
+   367→   367→              </div>
+   368→   368→              {editId === m.id && (
+   369→   369→                <EditMonForm
+   370→   370→                  mon={m}
+   371→   371→                  onDone={(doneMsg) => {
+   372→   372→                    setMsg(doneMsg);
+   373→   373→                    setEditId(null);
+   374→   374→                    void load();
+   375→   375→                  }}
+   376→   376→                  onCancel={() => setEditId(null)}
+   377→   377→                />
+   378→   378→              )}
+   379→   379→            </div>
+   380→   380→          ))}
+   381→   381→        </TabsContent>
+   382→   382→      </Tabs>
+   383→   383→
+   384→   384→      <AlertDialog open={removeTarget !== null} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+   385→   385→        <AlertDialogContent className="border-border bg-card">
+   386→   386→          <AlertDialogHeader>
+   387→   387→            <AlertDialogTitle className="font-display text-xs uppercase">
+   388→   388→              Remove {removeTarget ? displayName(removeTarget.name) : ""}?
+   389→   389→            </AlertDialogTitle>
+   390→   390→            <AlertDialogDescription className="font-soft text-sm leading-relaxed">
+   391→   391→              This permanently deletes the dex entry, every proposal and image submitted for it,
+   392→   392→              and retires its trigger word — chat can no longer re-discover it. The pokedex number
+   393→   393→              is never reused. This cannot be undone.
+   394→   394→            </AlertDialogDescription>
+   395→   395→          </AlertDialogHeader>
+   396→   396→          <AlertDialogFooter>
+   397→   397→            <AlertDialogCancel className="font-soft" disabled={removing}>Cancel</AlertDialogCancel>
+   398→   398→            <AlertDialogAction
+   399→   399→              className="font-soft bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   400→   400→              disabled={removing}
+   401→   401→              onClick={(e) => {
+   402→   402→                e.preventDefault();
+   403→   403→                if (removeTarget) void removeMon(removeTarget);
+   404→   404→              }}
+   405→   405→            >
+   406→   406→              {removing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+   407→   407→              Delete forever
+   408→   408→            </AlertDialogAction>
+   409→   409→          </AlertDialogFooter>
+   410→   410→        </AlertDialogContent>
+   411→   411→      </AlertDialog>
+   412→   412→    </div>
+   413→   413→  );
+   414→   414→}
+   415→   415→
+   416→   416→function Empty({ text }: { text: string }) {
+   417→   417→  return (
+   418→   418→    <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-10 text-center">
+   419→   419→      <p className="font-soft text-sm text-muted-foreground">{text}</p>
+   420→   420→    </div>
+   421→   421→  );
+   422→   422→}
+   423→   423→
+   424→   424→/**
+   425→   425→ * Full inline editor for one species: rename (moves the chat trigger word,
+   426→   426→ * storage folders and pending proposals), rewrite the story + credit, fix
+   427→   427→ * the discoverer and spotted count, and swap the approved artwork.
+   428→   428→ * The update_mon RPC treats NULL as "keep current value", so only changed
+   429→   429→ * fields are sent.
+   430→   430→ */
+   431→   431→function EditMonForm({
+   432→   432→  mon,
+   433→   433→  onDone,
+   434→   434→  onCancel,
+   435→   435→}: {
+   436→   436→  mon: Mon;
+   437→   437→  onDone: (msg: string) => void;
+   438→   438→  onCancel: () => void;
+   439→   439→}) {
+   440→   440→  const [name, setName] = useState(mon.name);
+   441→   441→  const [desc, setDesc] = useState(mon.description ?? "");
+   442→   442→  const [descBy, setDescBy] = useState(mon.description_by ?? "");
+   443→   443→  const [discBy, setDiscBy] = useState(mon.discovered_by);
+   444→   444→  const [count, setCount] = useState(String(mon.spotted_count));
+   445→   445→  const [file, setFile] = useState<File | null>(null);
+   446→   446→  const [preview, setPreview] = useState<string | null>(null);
+   447→   447→  const [busy, setBusy] = useState(false);
+   448→   448→  const [err, setErr] = useState<string | null>(null);
+   449→   449→  const fileRef = useRef<HTMLInputElement>(null);
+   450→   450→
+   451→   451→  const nextName = canonicalize(name) || mon.name;
+   452→   452→  const nameChanged = nextName !== mon.name;
+   453→   453→  const descChanged = desc.trim() !== (mon.description ?? "");
+   454→   454→  const descCleared = descChanged && desc.trim() === "";
+   455→   455→  const discChanged = discBy.trim() !== mon.discovered_by;
+   456→   456→  const countNum = Number.parseInt(count, 10);
+   457→   457→  const countChanged = Number.isFinite(countNum) && countNum !== mon.spotted_count;
+   458→   458→  const nothingChanged = !nameChanged && !descChanged && !discChanged && !countChanged && !file;
+   459→   459→
+   460→   460→  function pick(f: File | null) {
+   461→   461→    setErr(null);
+   462→   462→    setFile(null);
+   463→   463→    setPreview(null);
+   464→   464→    if (!f) return;
+   465→   465→    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+   466→   466→      setErr("Only PNG, JPEG, WebP or GIF allowed.");
+   467→   467→      return;
+   468→   468→    }
+   469→   469→    if (f.size > MAX_IMAGE_MB * 1024 * 1024) {
+   470→   470→      setErr(`Image too big — max ${MAX_IMAGE_MB}MB.`);
+   471→   471→      return;
+   472→   472→    }
+   473→   473→    setFile(f);
+   474→   474→    setPreview(URL.createObjectURL(f));
+   475→   475→  }
+   476→   476→
+   477→   477→  async function save() {
+   478→   478→    setErr(null);
+   479→   479→    if (desc.trim().length > 500) {
+   480→   480→      setErr("Description too long (max 500).");
+   481→   481→      return;
+   482→   482→    }
+   483→   483→    if (!Number.isFinite(countNum) || countNum < 0 || countNum > 1000000) {
+   484→   484→      setErr("Spotted count must be between 0 and 1,000,000.");
+   485→   485→      return;
+   486→   486→    }
+   487→   487→    if (nothingChanged) {
+   488→   488→      onCancel();
+   489→   489→      return;
+   490→   490→    }
+   491→   491→    setBusy(true);
+   492→   492→    let imagePath: string | null = null;
+   493→   493→    try {
+   494→   494→      if (file) {
+   495→   495→        const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : file.type === "image/gif" ? "gif" : "jpg";
+   496→   496→        const path = `approved/${nextName}/${crypto.randomUUID()}.${ext}`;
+   497→   497→        const { error: upErr } = await supabase.storage
+   498→   498→          .from(MON_IMAGES_BUCKET)
+   499→   499→          .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+   500→   500→        if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
+   501→   501→        imagePath = path;
+   502→   502→      }
+   503→   503→      const { error } = await supabase.rpc("update_mon", {
+   504→   504→        p_mon_id: mon.id,
+   505→   505→        p_name: nameChanged ? nextName : null,
+   506→   506→        p_description: descChanged && !descCleared ? desc.trim() : null,
+   507→   507→        p_description_by: descChanged && !descCleared ? descBy.trim() : null,
+   508→   508→        p_clear_description: descCleared,
+   509→   509→        p_discovered_by: discChanged ? discBy.trim() : null,
+   510→   510→        p_spotted_count: countChanged ? countNum : null,
+   511→   511→        p_image_path: imagePath,
+   512→   512→        p_image_by: imagePath ? mon.image_by : null,
+   513→   513→        p_clear_image: false,
+   514→   514→      });
+   515→   515→      if (error) throw error;
+   516→   516→      // swap done — drop the previous approved file (best effort)
+   517→   517→      if (imagePath && mon.image_path) {
+   518→   518→        await supabase.storage.from(MON_IMAGES_BUCKET).remove([mon.image_path]).catch(() => {});
+   519→   519→      }
+   520→   520→      onDone(nameChanged ? `Renamed to ${displayName(nextName)} and updated.` : `${displayName(mon.name)} updated.`);
+   521→   521→    } catch (e) {
+   522→   522→      // roll back an already-uploaded file so a failed save leaves no orphans
+   523→   523→      if (imagePath) {
+   524→   524→        await supabase.storage.from(MON_IMAGES_BUCKET).remove([imagePath]).catch(() => {});
+   525→   525→      }
+   526→   526→      setErr(e instanceof Error ? e.message : "Update failed");
+   527→   527→    } finally {
+   528→   528→      setBusy(false);
+   529→   529→    }
+   530→   530→  }
+   531→   531→
+   532→   532→  return (
+   533→   533→    <div className="space-y-4 rounded-xl border border-primary/25 bg-secondary/40 p-4">
+   534→   534→      <div className="flex items-center justify-between">
+   535→   535→        <h4 className="font-display text-[11px] uppercase tracking-wide text-muted-foreground">
+   536→   536→          Edit {displayName(mon.name)} <span className="text-primary/60">#{mon.pokedex_no}</span>
+   537→   537→        </h4>
+   538→   538→        <button onClick={onCancel} className="font-soft text-xs font-bold text-muted-foreground transition hover:text-primary">
+   539→   539→          cancel
+   540→   540→        </button>
+   541→   541→      </div>
+   542→   542→
+   543→   543→      <div className="grid gap-4 sm:grid-cols-2">
+   544→   544→        <div className="space-y-1.5">
+   545→   545→          <Label className="font-soft text-xs">Species name (the chat trigger word)</Label>
+   546→   546→          <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-background font-soft" />
+   547→   547→          <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+   548→   548→            {nameChanged ? (
+   549→   549→              <>
+   550→   550→                renaming moves the chat word, artwork folders and pending proposals — becomes{" "}
+   551→   551→                <span className="font-bold text-primary">{nextName}</span>
+   552→   552→              </>
+   553→   553→            ) : (
+   554→   554→              <>lowercase word ending in &ldquo;mon&rdquo; — changing it changes what chat types to spot this species</>
+   555→   555→            )}
+   556→   556→          </p>
+   557→   557→        </div>
+   558→   558→
+   559→   559→        <div className="grid grid-cols-2 gap-3">
+   560→   560→          <div className="space-y-1.5">
+   561→   561→            <Label className="font-soft text-xs">Discovered by</Label>
+   562→   562→            <Input value={discBy} onChange={(e) => setDiscBy(e.target.value)} className="bg-background font-soft" />
+   563→   563→          </div>
+   564→   564→          <div className="space-y-1.5">
+   565→   565→            <Label className="font-soft text-xs">Spotted count</Label>
+   566→   566→            <Input type="number" min={0} value={count} onChange={(e) => setCount(e.target.value)} className="bg-background font-soft" />
+   567→   567→          </div>
+   568→   568→        </div>
+   569→   569→      </div>
+   570→   570→
+   571→   571→      <div className="space-y-1.5">
+   572→   572→        <div className="flex items-baseline justify-between">
+   573→   573→          <Label className="font-soft text-xs">Story / description</Label>
+   574→   574→          <span className="font-soft text-[11px] text-muted-foreground">
+   575→   575→            {desc.trim().length}/500 — saving it empty removes the story
+   576→   576→          </span>
+   577→   577→        </div>
+   578→   578→        <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} className="bg-background font-soft" />
+   579→   579→        <Input
+   580→   580→          value={descBy}
+   581→   581→          onChange={(e) => setDescBy(e.target.value)}
+   582→   582→          placeholder="credit (who wrote it) — default: team"
+   583→   583→          className="bg-background font-soft text-xs"
+   584→   584→        />
+   585→   585→      </div>
+   586→   586→
+   587→   587→      <div className="space-y-1.5">
+   588→   588→        <Label className="font-soft text-xs">Artwork</Label>
+   589→   589→        <div className="flex flex-wrap items-center gap-3">
+   590→   590→          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-border bg-background">
+   591→   591→            {preview ? (
+   592→   592→              <img src={preview} alt="New artwork preview" className="max-h-14 max-w-14 object-contain" />
+   593→   593→            ) : mon.image_path ? (
+   594→   594→              <img src={publicImageUrl(mon.image_path)} alt="" className="max-h-14 max-w-14 object-contain" />
+   595→   595→            ) : (
+   596→   596→              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={52} needsArt />
+   597→   597→            )}
+   598→   598→          </div>
+   599→   599→          <input
+   600→   600→            ref={fileRef}
+   601→   601→            type="file"
+   602→   602→            accept={ALLOWED_IMAGE_TYPES.join(",")}
+   603→   603→            className="hidden"
+   604→   604→            onChange={(e) => pick(e.target.files?.[0] ?? null)}
+   605→   605→          />
+   606→   606→          <Button size="sm" variant="outline" className="font-soft" onClick={() => fileRef.current?.click()} disabled={busy}>
+   607→   607→            <ImageIcon className="mr-1 h-3.5 w-3.5" />
+   608→   608→            {file ? "Change file" : mon.image_path ? "Replace artwork" : "Upload artwork"}
+   609→   609→          </Button>
+   610→   610→          {file && <span className="font-soft max-w-48 truncate text-xs text-muted-foreground">{file.name}</span>}
+   611→   611→          {file && (
+   612→   612→            <button onClick={() => pick(null)} className="font-soft text-xs font-bold text-muted-foreground transition hover:text-destructive">
+   613→   613→              undo
+   614→   614→            </button>
+   615→   615→          )}
+   616→   616→        </div>
+   617→   617→        <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+   618→   618→          PNG / JPEG / WebP / GIF, max {MAX_IMAGE_MB}MB. Uploads land straight in the approved folder — public immediately.
+   619→   619→        </p>
+   620→   620→      </div>
+   621→   621→
+   622→   622→      {err && <p className="font-soft text-sm text-destructive">{err}</p>}
+   623→   623→
+   624→   624→      <div className="flex justify-end gap-2">
+   625→   625→        <Button size="sm" variant="ghost" className="font-soft" onClick={onCancel} disabled={busy}>
+   626→   626→          Cancel
+   627→   627→        </Button>
+   628→   628→        <Button size="sm" className="font-soft" onClick={() => void save()} disabled={busy || nothingChanged}>
+   629→   629→          {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Save changes
+   630→   630→        </Button>
+   631→   631→      </div>
+   632→   632→    </div>
+   633→   633→  );
+   634→   634→}
+   635→   635→
