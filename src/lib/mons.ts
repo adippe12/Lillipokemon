@@ -86,6 +86,20 @@ export type Proposal = {
 
 export type MonWithMeta = Mon & { pending_count: number };
 
+/** Lifetime spot tally per chat nickname (top-spotters leaderboard). */
+export type Spotter = {
+  name: string;
+  spots: number;
+  first_seen: string;
+  last_seen: string;
+};
+
+/** Accepted spots per UTC day (stats charts). `day` is "YYYY-MM-DD". */
+export type SpotDay = {
+  day: string;
+  spots: number;
+};
+
 /** Normalize a raw chat word to a canonical species name. */
 export function canonicalize(raw: string): string {
   return raw

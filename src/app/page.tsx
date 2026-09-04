@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert";
 import {
   Activity,
+  BarChart3,
   BookOpen,
   ExternalLink,
   FlaskConical,
@@ -37,6 +38,7 @@ import {
   RotateCcw,
   Search,
   Sparkles,
+  Trophy,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -506,6 +508,22 @@ export default function PokedexPage() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ListenerStatus />
             <a
+              href="/leaderboard/"
+              aria-label="Leaderboards"
+              title="Leaderboards"
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+            >
+              <Trophy className="h-4 w-4" />
+            </a>
+            <a
+              href="/stats/"
+              aria-label="Dex statistics"
+              title="Dex statistics"
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+            >
+              <BarChart3 className="h-4 w-4" />
+            </a>
+            <a
               href="/info/"
               aria-label="How this dex works"
               title="How this dex works"
@@ -803,6 +821,12 @@ export default function PokedexPage() {
               </p>
             </div>
             <nav aria-label="Links" className="font-soft flex max-w-full flex-wrap gap-x-6 gap-y-1.5 text-sm font-bold">
+              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/leaderboard/">
+                Leaderboards
+              </a>
+              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/stats/">
+                Stats
+              </a>
               <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/info/">
                 How it works
               </a>

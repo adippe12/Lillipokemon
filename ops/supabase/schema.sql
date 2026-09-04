@@ -101,6 +101,8 @@ for each row execute function public.proposal_safety_check();
 -- OPEN matching: any word ending in "mon" (>= 2 chars before it) becomes a
 -- species, minus reserved plain words + banned profanity substrings.
 -- mon_triggers stays as an admin-curated allowlist (any word shape).
+-- Accepted spots ALSO bump: spotters (lifetime tally per nickname,
+-- top-spotters leaderboard) and spot_days (totals per UTC day, stats).
 create table if not exists public.reserved_words (
   word     text primary key,
   added_at timestamptz not null default now()
@@ -149,6 +151,12 @@ begin
   where mons.last_spotted_by is distinct from excluded.last_spotted_by
      or mons.last_spotted_at < now() - interval '90 seconds';
 end $$;
+
+-- NOTE: the LIVE discover_mon is the 30s per-(mon,author) pair-debounce
+-- variant (migration 0005 + bot filter from 0006 + spotters/spot_days
+-- tallies from 0009). See ops/supabase/migration_0009_leaderboards.sql
+-- for the authoritative current body; the version above documents the
+-- original discovery semantics.
 
 grant execute on function public.discover_mon(text, text) to anon, authenticated;
 
@@ -223,6 +231,28 @@ $$;
 
 grant execute on function public.pending_counts() to anon, authenticated;
 
+-- 10b) Lifetime tallies (leaderboards & stats) -----------------
+-- Bumped ONLY by discover_mon after a spot passes validation,
+-- bot filtering and the pair debounce. Public read for the
+-- leaderboard/stats pages; no direct writes.
+create table if not exists public.spotters (
+  name        text primary key,
+  spots       bigint not null default 0,
+  first_seen  timestamptz not null default now(),
+  last_seen   timestamptz not null default now()
+);
+
+create table if not exists public.spot_days (
+  day    date primary key,
+  spots  bigint not null default 0
+);
+
+revoke all on public.spotters from anon, authenticated;
+grant select on public.spotters to anon, authenticated;
+
+revoke all on public.spot_days from anon, authenticated;
+grant select on public.spot_days to anon, authenticated;
+
 -- 11) Row Level Security --------------------------------------
 alter table public.mons        enable row level security;
 alter table public.proposals   enable row level security;
@@ -230,6 +260,8 @@ alter table public.admins      enable row level security;
 alter table public.mon_triggers enable row level security;
 alter table public.banned_words enable row level security;
 alter table public.reserved_words enable row level security;
+alter table public.spotters    enable row level security;
+alter table public.spot_days   enable row level security;
 
 drop policy if exists "mons_public_read" on public.mons;
 create policy "mons_public_read" on public.mons for select using (true);
@@ -264,6 +296,13 @@ create policy "triggers_public_read" on public.mon_triggers for select using (tr
 drop policy if exists "reserved_words_public_read" on public.reserved_words;
 create policy "reserved_words_public_read" on public.reserved_words for select using (true);
 
+-- lifetime tallies: public read (leaderboard + stats pages)
+drop policy if exists "spotters_public_read" on public.spotters;
+create policy "spotters_public_read" on public.spotters for select using (true);
+
+drop policy if exists "spot_days_public_read" on public.spot_days;
+create policy "spot_days_public_read" on public.spot_days for select using (true);
+
 -- banned_words: intentionally NO public read (do not reveal the filter)
 
 -- 12) Realtime broadcast --------------------------------------
@@ -279,6 +318,14 @@ begin
   end;
   begin
     alter publication supabase_realtime add table public.mon_triggers;
+  exception when others then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.spotters;
+  exception when others then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.spot_days;
   exception when others then null;
   end;
 end $$;
