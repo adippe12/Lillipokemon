@@ -1,0 +1,937 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+     4→import { supabase, supabaseConfigured, publicImageUrl } from "@/lib/supabase";
+     5→import {
+     6→  type Mon,
+     7→  TWITCH_CHANNEL,
+     8→  DEFAULT_TRIGGERS,
+     9→  DEFAULT_RESERVED,
+    10→  displayName,
+    11→  formatNumber,
+    12→  relativeTime,
+    13→} from "@/lib/mons";
+    14→import { useTwitchChat, type ChatMessage } from "@/lib/use-twitch-chat";
+    15→import { ListenerStatus } from "@/components/listener-status";
+    16→import { MonCard } from "@/components/mon-card";
+    17→import { MonDetailDialog } from "@/components/mon-detail";
+    18→import { MonSprite, spriteBubbleBg } from "@/components/mon-sprite";
+    19→import { LiveWire, type FeedEvent } from "@/components/live-wire";
+    20→import confetti from "canvas-confetti";
+    21→import { Button } from "@/components/ui/button";
+    22→import { Badge } from "@/components/ui/badge";
+    23→import { Input } from "@/components/ui/input";
+    24→import { Skeleton } from "@/components/ui/skeleton";
+    25→import {
+    26→  Alert,
+    27→  AlertDescription,
+    28→  AlertTitle,
+    29→} from "@/components/ui/alert";
+    30→import {
+    31→  Activity,
+    32→  BarChart3,
+    33→  BookOpen,
+    34→  ExternalLink,
+    35→  FlaskConical,
+    36→  Heart,
+    37→  Info,
+    38→  RotateCcw,
+    39→  Search,
+    40→  Sparkles,
+    41→  Trophy,
+    42→  Volume2,
+    43→  VolumeX,
+    44→} from "lucide-react";
+    45→
+    46→function blip(kind: "new" | "spot") {
+    47→  try {
+    48→    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    49→    if (!Ctx) return;
+    50→    const ctx = new Ctx();
+    51→    const now = ctx.currentTime;
+    52→    const notes = kind === "new" ? [523.25, 659.25, 783.99] : [440, 587.33];
+    53→    notes.forEach((f, i) => {
+    54→      const o = ctx.createOscillator();
+    55→      const g = ctx.createGain();
+    56→      o.type = "sine";
+    57→      o.frequency.value = f;
+    58→      g.gain.setValueAtTime(0.0001, now + i * 0.09);
+    59→      g.gain.exponentialRampToValueAtTime(0.03, now + i * 0.09 + 0.02);
+    60→      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.16);
+    61→      o.connect(g).connect(ctx.destination);
+    62→      o.start(now + i * 0.09);
+    63→      o.stop(now + i * 0.09 + 0.16);
+    64→    });
+    65→    setTimeout(() => ctx.close().catch(() => {}), 900);
+    66→  } catch {
+    67→    /* audio not available */
+    68→  }
+    69→}
+    70→
+    71→// ---- tiny external store for the mute preference ----
+    72→const muteListeners = new Set<() => void>();
+    73→function subscribeMute(listener: () => void) {
+    74→  muteListeners.add(listener);
+    75→  return () => muteListeners.delete(listener);
+    76→}
+    77→
+    78→function celebrate() {
+    79→  const colors = ["#f06ba8", "#b9a7f2", "#7fd8be", "#ffd97d", "#8ecdf7"];
+    80→  confetti({ particleCount: 90, spread: 75, origin: { y: 0.7 }, colors, disableForReducedMotion: true, scalar: 0.9 });
+    81→  setTimeout(
+    82→    () => confetti({ particleCount: 60, spread: 100, origin: { x: 0.15, y: 0.6 }, colors, disableForReducedMotion: true }),
+    83→    220
+    84→  );
+    85→  setTimeout(
+    86→    () => confetti({ particleCount: 60, spread: 100, origin: { x: 0.85, y: 0.6 }, colors, disableForReducedMotion: true }),
+    87→    380
+    88→  );
+    89→}
+    90→
+    91→// ---- hero typewriter: cycles through playful example species ----
+    92→// suggestions always follow the adjective+mon pattern: crazymon, latemon, luckymon
+    93→const EXAMPLE_WORDS = ["crazymon", "latemon", "luckymon"];
+    94→
+    95→function useTypewriter(words: string[]): string {
+    96→  const [typed, setTyped] = useState("");
+    97→  useEffect(() => {
+    98→    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    99→      const t = setTimeout(() => setTyped(words[0]), 0);
+   100→      return () => clearTimeout(t);
+   101→    }
+   102→    let i = 0;
+   103→    let pos = 0;
+   104→    let dir = 1;
+   105→    let timer: ReturnType<typeof setTimeout>;
+   106→    const step = () => {
+   107→      const word = words[i % words.length];
+   108→      pos += dir;
+   109→      setTyped(word.slice(0, Math.max(0, pos)));
+   110→      let delay = dir > 0 ? 110 : 40;
+   111→      if (dir > 0 && pos >= word.length) {
+   112→        dir = -1;
+   113→        delay = 1500;
+   114→      } else if (dir < 0 && pos <= 0) {
+   115→        dir = 1;
+   116→        i += 1;
+   117→        delay = 400;
+   118→      }
+   119→      timer = setTimeout(step, delay);
+   120→    };
+   121→    timer = setTimeout(step, 700);
+   122→    return () => clearTimeout(timer);
+   123→  }, [words]);
+   124→  return typed;
+   125→}
+   126→
+   127→// ---- animated number (count-up on change, reduced-motion aware) ----
+   128→function useCountUp(target: number, duration = 700): number {
+   129→  const [val, setVal] = useState(target);
+   130→  const prevRef = useRef(target);
+   131→  useEffect(() => {
+   132→    const from = prevRef.current;
+   133→    prevRef.current = target;
+   134→    if (from === target) return;
+   135→    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+   136→      const raf = requestAnimationFrame(() => setVal(target));
+   137→      return () => cancelAnimationFrame(raf);
+   138→    }
+   139→    const t0 = performance.now();
+   140→    let raf = 0;
+   141→    const tick = (t: number) => {
+   142→      const p = Math.min(1, (t - t0) / duration);
+   143→      const eased = 1 - Math.pow(1 - p, 3);
+   144→      setVal(Math.round(from + (target - from) * eased));
+   145→      if (p < 1) raf = requestAnimationFrame(tick);
+   146→    };
+   147→    raf = requestAnimationFrame(tick);
+   148→    return () => cancelAnimationFrame(raf);
+   149→  }, [target, duration]);
+   150→  return val;
+   151→}
+   152→
+   153→type SortKey = "dex" | "spotted" | "recent" | "newest";
+   154→const SORTS: { key: SortKey; label: string }[] = [
+   155→  { key: "dex", label: "Dex #" },
+   156→  { key: "spotted", label: "Most spotted" },
+   157→  { key: "recent", label: "Recent" },
+   158→  { key: "newest", label: "Newest" },
+   159→];
+   160→
+   161→const SPOT_TOAST_COOLDOWN = 10_000;
+   162→const SPOT_BLIP_COOLDOWN = 4_000;
+   163→
+   164→export default function PokedexPage() {
+   165→  const [triggers, setTriggers] = useState<string[]>(DEFAULT_TRIGGERS);
+   166→  const [reserved, setReserved] = useState<string[]>(DEFAULT_RESERVED);
+   167→  const [mons, setMons] = useState<Mon[]>([]);
+   168→  const [pending, setPending] = useState<Record<string, number>>({});
+   169→  const [setupError, setSetupError] = useState<string | null>(
+   170→    supabaseConfigured ? null : "The Pokedex archives are not linked yet."
+   171→  );
+   172→  const [loading, setLoading] = useState(supabaseConfigured);
+   173→  const [selectedId, setSelectedId] = useState<string | null>(null);
+   174→  const [toast, setToast] = useState<{ name: string; isNew: boolean; by: string; ts: number } | null>(null);
+   175→  const [feed, setFeed] = useState<FeedEvent[]>([]);
+   176→  const [query, setQuery] = useState("");
+   177→  const [sort, setSort] = useState<SortKey>("dex");
+   178→  const [hash, setHash] = useState("");
+   179→
+   180→  const celebrated = useRef<Set<string>>(new Set());
+   181→  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+   182→  const countsRef = useRef<Record<string, number>>({});
+   183→  const lastSpotToastRef = useRef(0);
+   184→  const lastSpotBlipRef = useRef(0);
+   185→  const mutedRef = useRef(false);
+   186→
+   187→  const showToast = useCallback((name: string, isNew: boolean, by: string) => {
+   188→    setToast({ name, isNew, by, ts: Date.now() });
+   189→    if (toastTimer.current) clearTimeout(toastTimer.current);
+   190→    toastTimer.current = setTimeout(() => setToast(null), isNew ? 5200 : 4200);
+   191→  }, []);
+   192→
+   193→  // sound preference (reactive localStorage via useSyncExternalStore)
+   194→  const muted = useSyncExternalStore(
+   195→    subscribeMute,
+   196→    () => {
+   197→      try {
+   198→        return localStorage.getItem("lp_muted") === "1";
+   199→      } catch {
+   200→        return false;
+   201→      }
+   202→    },
+   203→    () => true
+   204→  );
+   205→  useEffect(() => {
+   206→    mutedRef.current = muted;
+   207→  }, [muted]);
+   208→  const toggleMute = () => {
+   209→    try {
+   210→      localStorage.setItem("lp_muted", muted ? "0" : "1");
+   211→      muteListeners.forEach((l) => l());
+   212→    } catch {
+   213→      /* storage unavailable */
+   214→    }
+   215→  };
+   216→
+   217→  // ---- live wire feed (dedup by id within a short window) ----
+   218→  const addFeed = useCallback((ev: FeedEvent) => {
+   219→    setFeed((prev) => {
+   220→      const now = Date.now();
+   221→      if (prev.some((e) => e.id === ev.id && now - e.ts < 25_000)) return prev;
+   222→      const next = [{ ...ev, ts: ev.ts || now }, ...prev];
+   223→      return next.slice(0, 30);
+   224→    });
+   225→  }, []);
+   226→
+   227→  // ---- data loading ----
+   228→  const loadMons = useCallback(async () => {
+   229→    if (!supabaseConfigured) return;
+   230→    const { data, error } = await supabase
+   231→      .from("mons")
+   232→      .select("*")
+   233→      .order("pokedex_no", { ascending: true });
+   234→    if (error) {
+   235→      console.error("loadMons failed:", error.message);
+   236→      setSetupError("The Pokedex archives could not be reached. Refresh to retry.");
+   237→      return;
+   238→    }
+   239→    const rows = (data ?? []) as Mon[];
+   240→    setMons(rows);
+   241→    const map: Record<string, number> = {};
+   242→    for (const m of rows) map[m.id] = Number(m.spotted_count);
+   243→    countsRef.current = map;
+   244→  }, []);
+   245→
+   246→  const loadPending = useCallback(async () => {
+   247→    if (!supabaseConfigured) return;
+   248→    const { data } = await supabase.rpc("pending_counts");
+   249→    const map: Record<string, number> = {};
+   250→    for (const row of (data ?? []) as { mon_id: string; pending_count: number }[]) {
+   251→      map[row.mon_id] = Number(row.pending_count);
+   252→    }
+   253→    setPending(map);
+   254→  }, []);
+   255→
+   256→  const retryConnection = useCallback(async () => {
+   257→    setSetupError(null);
+   258→    setLoading(true);
+   259→    try {
+   260→      await Promise.all([loadMons(), loadPending()]);
+   261→    } finally {
+   262→      setLoading(false);
+   263→    }
+   264→  }, [loadMons, loadPending]);
+   265→
+   266→  useEffect(() => {
+   267→    if (!supabaseConfigured) return;
+   268→    (async () => {
+   269→      await Promise.all([loadMons(), loadPending()]);
+   270→      setLoading(false);
+   271→    })().catch(() => setLoading(false));
+   272→
+   273→    // triggers + reserved words (open matching blocklist)
+   274→    supabase
+   275→      .from("mon_triggers")
+   276→      .select("word")
+   277→      .then(({ data }) => {
+   278→        const words = (data ?? []).map((r: { word: string }) => r.word);
+   279→        if (words.length) setTriggers(words);
+   280→      });
+   281→    supabase
+   282→      .from("reserved_words")
+   283→      .select("word")
+   284→      .then(({ data }) => {
+   285→        const words = (data ?? []).map((r: { word: string }) => r.word);
+   286→        if (words.length) setReserved(words);
+   287→      });
+   288→
+   289→    // realtime
+   290→    const channel = supabase
+   291→      .channel("lillipokedex-live")
+   292→      .on(
+   293→        "postgres_changes",
+   294→        { event: "INSERT", schema: "public", table: "mons" },
+   295→        (payload) => {
+   296→          const mon = payload.new as Mon;
+   297→          countsRef.current[mon.id] = Number(mon.spotted_count);
+   298→          void loadMons();
+   299→          void loadPending();
+   300→          if (!celebrated.current.has(mon.id)) {
+   301→            celebrated.current.add(mon.id);
+   302→            showToast(mon.name, true, mon.discovered_by);
+   303→            if (!mutedRef.current) blip("new");
+   304→            celebrate();
+   305→          }
+   306→          addFeed({ id: `new:${mon.id}`, kind: "new", name: mon.name, by: mon.discovered_by, ts: Date.now() });
+   307→        }
+   308→      )
+   309→      .on(
+   310→        "postgres_changes",
+   311→        { event: "UPDATE", schema: "public", table: "mons" },
+   312→        (payload) => {
+   313→          const mon = payload.new as Mon;
+   314→          const prevCount = countsRef.current[mon.id];
+   315→          const newCount = Number(mon.spotted_count);
+   316→          countsRef.current[mon.id] = newCount;
+   317→          void loadMons();
+   318→          if (prevCount !== undefined && newCount > prevCount) {
+   319→            const by = mon.last_spotted_by || "chat";
+   320→            addFeed({ id: `spot:${mon.name}:${by}`, kind: "spot", name: mon.name, by, ts: Date.now() });
+   321→            const now = Date.now();
+   322→            if (now - lastSpotBlipRef.current > SPOT_BLIP_COOLDOWN) {
+   323→              lastSpotBlipRef.current = now;
+   324→              if (!mutedRef.current) blip("spot");
+   325→            }
+   326→            if (now - lastSpotToastRef.current > SPOT_TOAST_COOLDOWN) {
+   327→              lastSpotToastRef.current = now;
+   328→              showToast(mon.name, false, by);
+   329→            }
+   330→          }
+   331→        }
+   332→      )
+   333→      .on(
+   334→        "postgres_changes",
+   335→        { event: "DELETE", schema: "public", table: "mons" },
+   336→        (payload) => {
+   337→          const old = payload.old as { id: string };
+   338→          celebrated.current.delete(old.id);
+   339→          delete countsRef.current[old.id];
+   340→          setMons((prev) => prev.filter((m) => m.id !== old.id));
+   341→          setPending((prev) => {
+   342→            if (!(old.id in prev)) return prev;
+   343→            const next = { ...prev };
+   344→            delete next[old.id];
+   345→            return next;
+   346→          });
+   347→          setSelectedId((sel) => (sel === old.id ? null : sel));
+   348→        }
+   349→      )
+   350→      .on(
+   351→        "postgres_changes",
+   352→        { event: "INSERT", schema: "public", table: "mon_triggers" },
+   353→        (payload) => {
+   354→          const row = payload.new as { word: string };
+   355→          setTriggers((prev) => (prev.includes(row.word) ? prev : [...prev, row.word]));
+   356→        }
+   357→      )
+   358→      .on(
+   359→        "postgres_changes",
+   360→        { event: "DELETE", schema: "public", table: "mon_triggers" },
+   361→        (payload) => {
+   362→          const old = payload.old as { word: string };
+   363→          setTriggers((prev) => prev.filter((w) => w !== old.word));
+   364→        }
+   365→      )
+   366→      .subscribe();
+   367→
+   368→    return () => {
+   369→      supabase.removeChannel(channel);
+   370→      if (toastTimer.current) clearTimeout(toastTimer.current);
+   371→    };
+   372→  }, [loadMons, loadPending, showToast, addFeed]);
+   373→
+   374→  // ---- twitch chat mirror (READ-ONLY) ----
+   375→  // The 24/7 cloud worker is the SINGLE writer to Supabase. The browser only
+   376→  // mirrors the chat locally: a local match gives instant CHAT BUZZ feedback,
+   377→  // deduped against the realtime UPDATE that arrives a moment later from the
+   378→  // worker's report (same event id, 25s window).
+   379→  const handleMatch = useCallback(
+   380→    (msg: ChatMessage, canonical: string) => {
+   381→      const by = msg.displayName || msg.user;
+   382→      addFeed({ id: `spot:${canonical}:${by}`, kind: "spot", name: canonical, by, ts: Date.now() });
+   383→    },
+   384→    [addFeed]
+   385→  );
+   386→
+   387→  const { status } = useTwitchChat({
+   388→    channel: TWITCH_CHANNEL,
+   389→    triggers,
+   390→    reserved,
+   391→    onMatch: handleMatch,
+   392→  });
+   393→
+   394→  // ---- deep links: #mon-<name> opens the entry dialog ----
+   395→  useEffect(() => {
+   396→    const onHash = () => setHash(window.location.hash);
+   397→    onHash();
+   398→    window.addEventListener("hashchange", onHash);
+   399→    return () => window.removeEventListener("hashchange", onHash);
+   400→  }, []);
+   401→
+   402→  useEffect(() => {
+   403→    const m = /^#mon-([a-z0-9_]+)$/i.exec(hash);
+   404→    const targetName = m ? m[1].toLowerCase() : null;
+   405→    if (targetName) {
+   406→      const found = mons.find((x) => x.name === targetName);
+   407→      if (found && found.id !== selectedId) setSelectedId(found.id);
+   408→    } else if (!hash && selectedId) {
+   409→      setSelectedId(null);
+   410→    }
+   411→  }, [hash, mons, selectedId]);
+   412→
+   413→  const openMon = useCallback(
+   414→    (id: string) => {
+   415→      const mon = mons.find((m) => m.id === id);
+   416→      setSelectedId(id);
+   417→      if (mon) {
+   418→        window.history.replaceState(null, "", `#mon-${mon.name}`);
+   419→        setHash(`#mon-${mon.name}`);
+   420→      }
+   421→    },
+   422→    [mons]
+   423→  );
+   424→
+   425→  const closeMon = useCallback(() => {
+   426→    setSelectedId(null);
+   427→    if (window.location.hash) {
+   428→      window.history.replaceState(null, "", window.location.pathname);
+   429→      setHash("");
+   430→    }
+   431→  }, []);
+   432→
+   433→  // ---- derived data ----
+   434→  const stats = useMemo(() => {
+   435→    const inReview = Object.values(pending).reduce((a, b) => a + b, 0);
+   436→    return { species: mons.length, inReview };
+   437→  }, [mons, pending]);
+   438→
+   439→  const latest = useMemo(() => {
+   440→    if (mons.length === 0) return null;
+   441→    return [...mons].sort((a, b) => (b.last_spotted_at > a.last_spotted_at ? 1 : -1))[0];
+   442→  }, [mons]);
+   443→
+   444→  const maxSpotted = useMemo(
+   445→    () => mons.reduce((a, m) => Math.max(a, m.spotted_count), 0),
+   446→    [mons]
+   447→  );
+   448→
+   449→  const selected = useMemo(() => mons.find((m) => m.id === selectedId) ?? null, [mons, selectedId]);
+   450→
+   451→  const visibleMons = useMemo(() => {
+   452→    const q = query.trim().toLowerCase().replace(/^#/, "");
+   453→    const list = q
+   454→      ? mons.filter(
+   455→          (m) =>
+   456→            m.name.includes(q) ||
+   457→            displayName(m.name).toLowerCase().includes(q) ||
+   458→            (m.discovered_by || "").toLowerCase().includes(q)
+   459→        )
+   460→      : mons;
+   461→    const sorted = [...list];
+   462→    switch (sort) {
+   463→      case "spotted":
+   464→        sorted.sort((a, b) => b.spotted_count - a.spotted_count);
+   465→        break;
+   466→      case "recent":
+   467→        sorted.sort((a, b) => (b.last_spotted_at > a.last_spotted_at ? 1 : -1));
+   468→        break;
+   469→      case "newest":
+   470→        sorted.sort((a, b) => (b.discovered_at > a.discovered_at ? 1 : -1));
+   471→        break;
+   472→      default:
+   473→        sorted.sort((a, b) => a.pokedex_no - b.pokedex_no);
+   474→    }
+   475→    return sorted;
+   476→  }, [mons, query, sort]);
+   477→
+   478→  const isFiltering = query.trim() !== "" || sort !== "dex";
+   479→  const typed = useTypewriter(EXAMPLE_WORDS);
+   480→
+   481→  const statusLabel =
+   482→    status === "live" ? `LIVE · #${TWITCH_CHANNEL}` : status === "connecting" ? "connecting…" : status === "reconnecting" ? "reconnecting…" : "offline";
+   483→
+   484→  const toastMon = useMemo(
+   485→    () => (toast ? mons.find((m) => m.name === toast.name) ?? null : null),
+   486→    [toast, mons]
+   487→  );
+   488→
+   489→  return (
+   490→    <div className="flex min-h-screen flex-col">
+   491→      {/* ---------- header ---------- */}
+   492→      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 shadow-[0_2px_18px_rgba(240,107,168,0.07)] backdrop-blur">
+   493→        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+   494→          <a
+   495→            href="/"
+   496→            className="flex items-center gap-2.5 rounded-full transition hover:opacity-90"
+   497→            aria-label="LILLIPEDEX home"
+   498→          >
+   499→            <span className="flex items-end gap-1" aria-hidden>
+   500→              <Heart className="h-4 w-4 text-primary" fill="currentColor" />
+   501→              <Heart className="h-3 w-3 text-[#b9a7f2]" fill="currentColor" />
+   502→              <Heart className="h-2.5 w-2.5 text-[#7fd8be]" fill="currentColor" />
+   503→            </span>
+   504→            <h1 className="font-display text-lg font-extrabold tracking-wide text-foreground sm:text-xl">
+   505→              LILLI<span className="text-primary">PEDEX</span>
+   506→            </h1>
+   507→          </a>
+   508→          <div className="flex items-center gap-1.5 sm:gap-2">
+   509→            <ListenerStatus />
+   510→            <a
+   511→              href="/leaderboard/"
+   512→              aria-label="Leaderboards"
+   513→              title="Leaderboards"
+   514→              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+   515→            >
+   516→              <Trophy className="h-4 w-4" />
+   517→            </a>
+   518→            <a
+   519→              href="/stats/"
+   520→              aria-label="Dex statistics"
+   521→              title="Dex statistics"
+   522→              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+   523→            >
+   524→              <BarChart3 className="h-4 w-4" />
+   525→            </a>
+   526→            <a
+   527→              href="/info/"
+   528→              aria-label="How this dex works"
+   529→              title="How this dex works"
+   530→              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+   531→            >
+   532→              <Info className="h-4 w-4" />
+   533→            </a>
+   534→            <button
+   535→              onClick={toggleMute}
+   536→              aria-label={muted ? "Unmute discovery sounds" : "Mute discovery sounds"}
+   537→              aria-pressed={muted}
+   538→              className="rounded-full border border-border bg-card p-2 text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+   539→            >
+   540→              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-primary" />}
+   541→            </button>
+   542→            <a
+   543→              href={`https://twitch.tv/${TWITCH_CHANNEL}`}
+   544→              target="_blank"
+   545→              rel="noopener noreferrer"
+   546→              className="flex items-center gap-2 rounded-full border border-primary/25 bg-card px-2.5 py-1.5 shadow-[0_2px_8px_rgba(240,107,168,0.08)] transition hover:border-primary/50 sm:px-3"
+   547→            >
+   548→              <span className={`pulse-dot ${status === "live" ? "" : "err"}`} />
+   549→              <span className="font-soft hidden text-sm font-bold text-foreground sm:inline">{statusLabel}</span>
+   550→              <span className="font-soft text-sm font-bold text-foreground sm:hidden">LIVE</span>
+   551→            </a>
+   552→          </div>
+   553→        </div>
+   554→      </header>
+   555→
+   556→      {/* ---------- main ---------- */}
+   557→      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6">
+   558→        {setupError && (
+   559→          <Alert variant="destructive" className="mb-6">
+   560→            <Activity className="h-4 w-4" />
+   561→            <AlertTitle className="font-soft font-bold">Oh no, a connection hiccup</AlertTitle>
+   562→            <AlertDescription className="font-soft text-sm">
+   563→              {setupError}
+   564→              <Button
+   565→                size="sm"
+   566→                variant="outline"
+   567→                onClick={() => void retryConnection()}
+   568→                className="font-soft ml-0 mt-2 flex items-center gap-1.5 sm:ml-3 sm:mt-0"
+   569→              >
+   570→                <RotateCcw className="h-3.5 w-3.5" /> Retry
+   571→              </Button>
+   572→            </AlertDescription>
+   573→          </Alert>
+   574→        )}
+   575→
+   576→        {/* hero — compact: the mons are the stars */}
+   577→        <section className="mb-4">
+   578→          <div className="cloud-panel relative rounded-3xl px-5 py-6 sm:px-8 sm:py-8">
+   579→            {/* floating pastel bubbles */}
+   580→            <span className="bubble bubble-pink bob" style={{ width: 92, height: 92, top: -26, right: 70 }} aria-hidden />
+   581→            <span className="bubble bubble-lavender bob" style={{ width: 54, height: 54, top: 44, right: -12, animationDelay: "1.2s" }} aria-hidden />
+   582→            <span className="bubble bubble-mint bob" style={{ width: 42, height: 42, bottom: 30, left: -12, animationDelay: "2s" }} aria-hidden />
+   583→            <span className="bubble bubble-butter bob" style={{ width: 30, height: 30, top: 14, left: 150, animationDelay: "0.6s" }} aria-hidden />
+   584→            <span className="bubble bubble-sky bob" style={{ width: 48, height: 48, bottom: -14, right: 210, animationDelay: "2.6s" }} aria-hidden />
+   585→            <div className="relative z-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+   586→              <div className="min-w-0 space-y-2.5">
+   587→                <p className="font-soft text-sm font-bold text-primary">
+   588→                  <Sparkles className="mr-1 inline h-4 w-4" aria-hidden />
+   589→                  listening to twitch.tv/{TWITCH_CHANNEL} chat…
+   590→                </p>
+   591→                <h2 className="font-display max-w-xl text-xl font-extrabold leading-snug text-foreground sm:text-2xl">
+   592→                  Every little <span className="text-primary">mon</span> typed in chat
+   593→                  <br className="hidden sm:block" /> becomes a new mon here
+   594→                </h2>
+   595→                <p className="font-soft text-base font-semibold text-muted-foreground" aria-hidden>
+   596→                  try: <span className="font-bold text-primary">{typed}</span>
+   597→                  <span className="caret" />
+   598→                </p>
+   599→                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+   600→                  <Badge className="rounded-full border border-primary/40 bg-primary/15 font-soft text-[13px] font-bold text-primary">
+   601→                    any word ending in &ldquo;mon&rdquo;
+   602→                  </Badge>
+   603→                  {triggers.slice(0, 5).map((t) => (
+   604→                    <Badge
+   605→                      key={t}
+   606→                      variant="secondary"
+   607→                      className="rounded-full border border-[#b9a7f2]/50 bg-[#b9a7f2]/15 font-soft text-[13px] font-bold text-[#8a6fd1]"
+   608→                    >
+   609→                      &ldquo;{t}&rdquo;
+   610→                    </Badge>
+   611→                  ))}
+   612→                  {triggers.length > 5 && (
+   613→                    <span className="font-soft text-xs font-bold text-muted-foreground">+{triggers.length - 5}</span>
+   614→                  )}
+   615→                </div>
+   616→              </div>
+   617→              <SpotlightMon mon={loading ? null : latest} onOpen={openMon} />
+   618→            </div>
+   619→          </div>
+   620→        </section>
+   621→
+   622→        {/* stat pills + chat buzz ticker */}
+   623→        <section aria-label="Dex stats and live activity" className="mb-6 space-y-3">
+   624→          <div className="grid grid-cols-2 gap-2.5">
+   625→            <StatPill
+   626→              icon={<Heart className="h-4 w-4 text-primary" />}
+   627→              label="mons"
+   628→              value={loading ? null : stats.species}
+   629→            />
+   630→            <StatPill
+   631→              icon={<FlaskConical className="h-4 w-4 text-[#8a6fd1]" />}
+   632→              label="in review"
+   633→              value={loading ? null : stats.inReview}
+   634→            />
+   635→          </div>
+   636→          <LiveWire events={feed} />
+   637→        </section>
+   638→
+   639→        {/* discovery toast */}
+   640→        {toast && (
+   641→          <div className="anim-toast fixed bottom-6 z-50 w-max max-w-[calc(100vw-2.5rem)]" role="status" aria-live="polite">
+   642→            <button
+   643→              onClick={() => {
+   644→                if (toastMon) openMon(toastMon.id);
+   645→                setToast(null);
+   646→              }}
+   647→              className="candy-card relative flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-popover px-5 py-4 pr-7 text-left"
+   648→            >
+   649→              <div
+   650→                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_10px_rgba(240,107,168,0.15)]"
+   651→                style={{ background: toastMon ? spriteBubbleBg(toastMon.name, toastMon.id.slice(0, 8)) : "#fdeff5" }}
+   652→              >
+   653→                {toastMon ? (
+   654→                  toastMon.image_path ? (
+   655→                    <img
+   656→                      src={publicImageUrl(toastMon.image_path)}
+   657→                      alt={`${toastMon.name} artwork`}
+   658→                      className="h-full w-full rounded-full object-cover"
+   659→                    />
+   660→                  ) : (
+   661→                    <MonSprite name={toast.name} seed={toastMon.id.slice(0, 8)} size={36} needsArt />
+   662→                  )
+   663→                ) : (
+   664→                  <MonSprite name={toast.name} seed={toast.name} size={36} needsArt />
+   665→                )}
+   666→              </div>
+   667→              <div>
+   668→                {toast.isNew ? (
+   669→                  <p className="font-display text-xs font-extrabold text-primary">NEW MON DISCOVERED!</p>
+   670→                ) : (
+   671→                  <p className="font-display text-xs font-extrabold text-pokedex-cyan">SPOTTED AGAIN!</p>
+   672→                )}
+   673→                <p className="font-soft truncate text-sm font-bold text-foreground">
+   674→                  {displayName(toast.name)}{" "}
+   675→                  {toast.isNew ? `— found by @${toast.by}` : `— spotted by @${toast.by}`}
+   676→                </p>
+   677→                <p className="font-soft text-[11px] font-semibold text-muted-foreground">tap to open the entry</p>
+   678→              </div>
+   679→              <span
+   680→                key={toast.ts}
+   681→                aria-hidden
+   682→                className="toast-timer-bar absolute bottom-0 left-0 h-[3px] bg-primary/50"
+   683→              />
+   684→            </button>
+   685→          </div>
+   686→        )}
+   687→
+   688→        {/* grid */}
+   689→        <section aria-label="Pokedex entries" className="mb-8">
+   690→          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+   691→            <h2 className="font-display mb-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+   692→              <BookOpen className="mr-2 inline h-4 w-4 text-primary" />
+   693→              Dex mons — {stats.species}
+   694→            </h2>
+   695→            {query.trim() !== "" && (
+   696→              <span className="font-soft text-xs font-bold text-muted-foreground">
+   697→                showing {visibleMons.length} of {mons.length}
+   698→              </span>
+   699→            )}
+   700→          </div>
+   701→
+   702→          {mons.length > 0 && (
+   703→            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+   704→              <div className="relative w-full md:max-w-xs">
+   705→                <Search
+   706→                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+   707→                  aria-hidden
+   708→                />
+   709→                <Input
+   710→                  value={query}
+   711→                  onChange={(e) => setQuery(e.target.value)}
+   712→                  placeholder="Search species or discoverer…"
+   713→                  aria-label="Search species or discoverer"
+   714→                  className="font-soft rounded-full border-border bg-card pl-9 font-semibold shadow-[0_2px_8px_rgba(240,107,168,0.06)]"
+   715→                />
+   716→              </div>
+   717→              <div
+   718→                className="flex items-center gap-1 self-start overflow-x-auto rounded-full border border-border bg-card/80 p-1 shadow-[0_2px_8px_rgba(240,107,168,0.06)]"
+   719→                role="group"
+   720→                aria-label="Sort entries"
+   721→              >
+   722→                {SORTS.map((s) => (
+   723→                  <button
+   724→                    key={s.key}
+   725→                    onClick={() => setSort(s.key)}
+   726→                    aria-pressed={sort === s.key}
+   727→                    className={`font-soft whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-bold transition ${
+   728→                      sort === s.key
+   729→                        ? "bg-primary text-primary-foreground shadow-[0_3px_10px_rgba(240,107,168,0.35)]"
+   730→                        : "text-muted-foreground hover:text-foreground"
+   731→                    }`}
+   732→                  >
+   733→                    {s.label}
+   734→                  </button>
+   735→                ))}
+   736→              </div>
+   737→            </div>
+   738→          )}
+   739→
+   740→          {loading ? (
+   741→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   742→              {Array.from({ length: 3 }).map((_, i) => (
+   743→                <Skeleton key={i} className="h-64 rounded-3xl bg-secondary" />
+   744→              ))}
+   745→            </div>
+   746→          ) : mons.length === 0 ? (
+   747→            <div className="rounded-3xl border-2 border-dashed border-border bg-white/60 p-12 text-center">
+   748→              <div className="mb-6 flex items-end justify-center gap-6" aria-hidden>
+   749→                {EXAMPLE_WORDS.slice(0, 3).map((w, i) => (
+   750→                  <div
+   751→                    key={w}
+   752→                    className="floaty flex flex-col items-center gap-2"
+   753→                    style={{ animationDelay: `${i * 300}ms` }}
+   754→                  >
+   755→                    <div
+   756→                      className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white shadow-[0_6px_14px_rgba(240,107,168,0.14)]"
+   757→                      style={{ background: spriteBubbleBg(w, w) }}
+   758→                    >
+   759→                      <MonSprite name={w} seed={w} size={52} />
+   760→                    </div>
+   761→                    <span className="font-soft text-xs font-bold text-muted-foreground">{w}</span>
+   762→                  </div>
+   763→                ))}
+   764→              </div>
+   765→              <p className="font-display text-base font-bold text-foreground">No mons yet…</p>
+   766→              <p className="font-soft mt-2 text-base font-semibold text-muted-foreground">
+   767→                Type <span className="font-bold text-primary">any word ending in &ldquo;mon&rdquo;</span> in{" "}
+   768→                {TWITCH_CHANNEL}&apos;s chat — crazymon, latemon, luckymon!
+   769→              </p>
+   770→            </div>
+   771→          ) : visibleMons.length === 0 ? (
+   772→            <div className="rounded-3xl border-2 border-dashed border-border bg-white/60 p-10 text-center">
+   773→              <p className="font-soft text-base font-semibold text-muted-foreground">
+   774→                No species match <span className="font-bold text-primary">&ldquo;{query.trim()}&rdquo;</span>
+   775→              </p>
+   776→              <Button variant="secondary" className="font-soft mt-3 rounded-full font-bold" onClick={() => setQuery("")}>
+   777→                Clear search
+   778→              </Button>
+   779→            </div>
+   780→          ) : (
+   781→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   782→              {visibleMons.map((mon, i) => (
+   783→                <MonCard
+   784→                  key={mon.id}
+   785→                  mon={mon}
+   786→                  pendingCount={pending[mon.id] ?? 0}
+   787→                  index={i}
+   788→                  onClick={() => openMon(mon.id)}
+   789→                />
+   790→              ))}
+   791→            </div>
+   792→          )}
+   793→        </section>
+   794→
+   795→        {/* pointer to the info page */}
+   796→        <section aria-label="More about the dex">
+   797→          <a
+   798→            href="/info/"
+   799→            className="font-soft group flex items-center justify-center gap-2 rounded-full border-2 border-border bg-white/80 px-5 py-3.5 text-center text-sm font-bold text-foreground shadow-[0_4px_14px_rgba(240,107,168,0.08)] transition hover:border-primary/40 hover:text-primary"
+   800→          >
+   801→            <BookOpen className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+   802→            Curious? See how mons are born, how to add research &amp; more
+   803→            <span aria-hidden className="text-primary transition-transform group-hover:translate-x-0.5">
+   804→              →
+   805→            </span>
+   806→          </a>
+   807→        </section>
+   808→      </main>
+   809→
+   810→      {/* ---------- footer ---------- */}
+   811→      <footer className="mt-auto border-t border-border/70 bg-white/60">
+   812→        <div className="mx-auto w-full max-w-6xl px-4 py-8">
+   813→          <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
+   814→            <div className="space-y-2">
+   815→              <p className="font-display text-sm font-extrabold text-foreground">
+   816→                LILLI<span className="text-primary">PEDEX</span> — made with{" "}
+   817→                <Heart className="inline h-3.5 w-3.5 text-primary" fill="currentColor" /> for the lillimon_ community
+   818→              </p>
+   819→              <p className="font-soft text-sm font-semibold text-muted-foreground">
+   820→                A living encyclopedia the whole chat builds together — one shout at a time.
+   821→              </p>
+   822→            </div>
+   823→            <nav aria-label="Links" className="font-soft flex max-w-full flex-wrap gap-x-6 gap-y-1.5 text-sm font-bold">
+   824→              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/leaderboard/">
+   825→                Leaderboards
+   826→              </a>
+   827→              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/stats/">
+   828→                Stats
+   829→              </a>
+   830→              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href="/info/">
+   831→                How it works
+   832→              </a>
+   833→              <a className="flex items-center gap-1.5 text-muted-foreground transition hover:text-primary" href={`https://twitch.tv/${TWITCH_CHANNEL}`} target="_blank" rel="noopener noreferrer">
+   834→                Twitch channel <ExternalLink className="h-3 w-3" />
+   835→              </a>
+   836→              <Button asChild variant="ghost" className="h-auto justify-start p-0 font-soft text-sm font-bold text-muted-foreground hover:bg-transparent hover:text-primary">
+   837→                <a href="/admin/" className="flex items-center gap-1.5">
+   838→                  Team login <ExternalLink className="h-3 w-3" />
+   839→                </a>
+   840→              </Button>
+   841→            </nav>
+   842→          </div>
+   843→        </div>
+   844→      </footer>
+   845→
+   846→      <MonDetailDialog
+   847→        mon={selected}
+   848→        pendingCount={selected ? (pending[selected.id] ?? 0) : 0}
+   849→        maxSpotted={maxSpotted}
+   850→        onOpenChange={(open) => {
+   851→          if (!open) closeMon();
+   852→        }}
+   853→      />
+   854→    </div>
+   855→  );
+   856→}
+   857→
+   858→function StatPill({
+   859→  icon,
+   860→  label,
+   861→  value,
+   862→}: {
+   863→  icon: React.ReactNode;
+   864→  label: string;
+   865→  value: number | null;
+   866→}) {
+   867→  const v = useCountUp(value ?? 0);
+   868→  return (
+   869→    <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-white/90 px-2 py-2.5 shadow-[0_4px_14px_rgba(240,107,168,0.08)]">
+   870→      <span className="shrink-0" aria-hidden>
+   871→        {icon}
+   872→      </span>
+   873→      <p className="font-display whitespace-nowrap text-lg font-extrabold text-primary sm:text-xl">
+   874→        {value === null ? "…" : formatNumber(v)}
+   875→      </p>
+   876→      <p className="font-soft text-left text-[11px] leading-tight font-bold tracking-wide text-muted-foreground uppercase">
+   877→        {label}
+   878→      </p>
+   879→    </div>
+   880→  );
+   881→}
+   882→
+   883→/** Cute spotlight card in the hero: the most recently spotted mon. */
+   884→function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) => void }) {
+   885→  if (!mon) {
+   886→    return (
+   887→      <div className="candy-card flex w-full flex-col items-center gap-2 rounded-3xl px-5 py-4 sm:w-[300px]" aria-hidden>
+   888→        <div className="flex items-center gap-4">
+   889→          {EXAMPLE_WORDS.slice(0, 3).map((w, i) => (
+   890→            <div
+   891→              key={w}
+   892→              className="floaty flex h-12 w-12 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.12)]"
+   893→              style={{ background: spriteBubbleBg(w, w), animationDelay: `${i * 300}ms` }}
+   894→            >
+   895→              <MonSprite name={w} seed={w} size={38} />
+   896→            </div>
+   897→          ))}
+   898→        </div>
+   899→        <p className="font-soft text-[11px] font-bold text-muted-foreground">mons will pop up here!</p>
+   900→      </div>
+   901→    );
+   902→  }
+   903→  const by = mon.last_spotted_by || mon.discovered_by;
+   904→  return (
+   905→    <button
+   906→      onClick={() => onOpen(mon.id)}
+   907→      className="candy-card group relative flex w-full shrink-0 items-center gap-3.5 rounded-3xl px-4 py-4 text-left sm:w-[300px]"
+   908→      aria-label={`Open ${mon.name} entry — the latest mon`}
+   909→    >
+   910→      <span className="font-display absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold whitespace-nowrap text-primary-foreground shadow-[0_2px_8px_rgba(240,107,168,0.4)]">
+   911→        LATEST MON
+   912→      </span>
+   913→      <div
+   914→        className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_12px_rgba(240,107,168,0.14)]"
+   915→        style={{ background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)) }}
+   916→      >
+   917→        {mon.image_path ? (
+   918→          <img
+   919→            src={publicImageUrl(mon.image_path)}
+   920→            alt={`${mon.name} artwork`}
+   921→            className="h-full w-full rounded-full object-cover"
+   922→          />
+   923→        ) : (
+   924→          <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} needsArt />
+   925→        )}
+   926→      </div>
+   927→      <div className="min-w-0">
+   928→        <p className="font-display truncate text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+   929→          {displayName(mon.name)}
+   930→        </p>
+   931→        <p className="font-soft truncate text-[13px] font-semibold text-muted-foreground">spotted by @{by}</p>
+   932→        <p className="font-soft text-xs font-bold text-primary">{relativeTime(mon.last_spotted_at, Date.now())}</p>
+   933→      </div>
+   934→    </button>
+   935→  );
+   936→}
+   937→
