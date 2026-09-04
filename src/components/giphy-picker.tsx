@@ -75,6 +75,17 @@ export function GiphyPicker({ onPick }: { onPick: (gif: GiphyGif) => void }) {
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="rounded bg-black px-1.5 py-0.5 text-[9px] font-black leading-none tracking-[0.14em] text-white"
+        >
+          GIPHY
+        </span>
+        <span className="font-soft truncate text-[11px] font-bold text-muted-foreground">
+          {q.trim() ? `Results for “${q.trim()}”` : "Trending now — search for the perfect GIF"}
+        </span>
+      </div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
@@ -88,7 +99,7 @@ export function GiphyPicker({ onPick }: { onPick: (gif: GiphyGif) => void }) {
           }}
           placeholder="Search GIPHY for a matching GIF…"
           aria-label="Search GIPHY"
-          className="rounded-full bg-secondary/70 pl-9 font-soft font-semibold"
+          className="rounded-full border-border bg-white pl-9 font-soft font-semibold"
         />
       </div>
 
@@ -174,7 +185,7 @@ function GiphyThumb({ gif, onPick }: { gif: GiphyGif; onPick: () => void }) {
       onMouseLeave={() => setAnim(false)}
       onFocus={() => setAnim(true)}
       onBlur={() => setAnim(false)}
-      className="overflow-hidden rounded-lg border border-border bg-secondary/60 transition hover:border-primary/60 focus-visible:outline-2 focus-visible:outline-primary"
+      className="group relative overflow-hidden rounded-lg border border-border bg-secondary/60 transition hover:border-[#00ff66]/70 focus-visible:outline-2 focus-visible:outline-primary"
       aria-label={label}
     >
       <img
@@ -183,6 +194,12 @@ function GiphyThumb({ gif, onPick }: { gif: GiphyGif; onPick: () => void }) {
         loading="lazy"
         className="block h-auto w-full"
       />
+      <span
+        aria-hidden
+        className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-px text-[8px] font-black leading-none tracking-[0.1em] text-[#00ff66] opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"
+      >
+        USE
+      </span>
     </button>
   );
 }

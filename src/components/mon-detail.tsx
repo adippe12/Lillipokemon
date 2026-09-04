@@ -53,7 +53,6 @@ import {
   Link2,
   Loader2,
   PenLine,
-  Search,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -266,8 +265,12 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
                         title={mon.image_path ? "Replace the artwork" : "Submit artwork"}
                         sub={
                           mon.image_path
-                            ? "Upload a new official portrait"
-                            : `Give ${displayName(mon.name)} its official portrait`
+                            ? GIPHY_ENABLED
+                              ? "Upload a new portrait or grab a GIF from GIPHY"
+                              : "Upload a new official portrait"
+                            : GIPHY_ENABLED
+                              ? "Upload art or find a GIF on GIPHY"
+                              : `Give ${displayName(mon.name)} its official portrait`
                         }
                         onClick={() => setView("art")}
                       />
@@ -348,6 +351,54 @@ function HeroArt({ path, name, onZoom }: { path: string; name: string; onZoom: (
           <ZoomIn className="h-3 w-3" /> full size
         </span>
       </span>
+    </button>
+  );
+}
+
+/**
+ * Source selector card for the artwork form (upload vs GIPHY). The GIPHY
+ * variant is intentionally dark + neon green — the one loud element in the
+ * pastel form — so the feature is impossible to miss.
+ */
+function ArtSourceCard({
+  selected,
+  dark,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  dark?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "relative flex items-center gap-2.5 rounded-2xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+        dark
+          ? selected
+            ? "border-[#00ff66]/70 bg-[#141419] ring-2 ring-[#00ff66]/40 shadow-[0_6px_20px_rgba(0,255,102,0.22)]"
+            : "border-white/15 bg-[#141419] hover:border-[#00ff66]/45"
+          : selected
+            ? "border-primary/60 bg-white shadow-[0_6px_18px_rgba(240,107,168,0.16)] ring-2 ring-primary/25"
+            : "border-border bg-secondary/50 hover:border-primary/40 hover:bg-white",
+      )}
+    >
+      {children}
+      {selected && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full",
+            dark ? "bg-[#00ff66]" : "bg-primary",
+          )}
+        >
+          <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />
+        </span>
+      )}
     </button>
   );
 }
@@ -663,40 +714,48 @@ function ImageForm({
     <div className="space-y-4">
       <div className="space-y-2">
         {GIPHY_ENABLED ? (
-          <div className="flex items-center justify-between gap-2">
-            <label className="font-soft text-sm font-bold text-muted-foreground">Artwork</label>
-            <div className="flex rounded-full bg-secondary p-1" role="group" aria-label="Artwork source">
-              <button
-                type="button"
-                onClick={() => {
-                  setSource("upload");
-                  setGifPick(null);
-                }}
-                aria-pressed={source === "upload"}
-                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
-                  source === "upload"
-                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
-                    : "text-muted-foreground hover:text-primary"
-                }`}
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Artwork source">
+            <ArtSourceCard
+              selected={source === "upload"}
+              onClick={() => {
+                setSource("upload");
+                setGifPick(null);
+              }}
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                aria-hidden
               >
-                <UploadCloud className="h-3.5 w-3.5" /> Upload
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSource("giphy");
-                  pick(null);
-                }}
-                aria-pressed={source === "giphy"}
-                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
-                  source === "giphy"
-                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
-                    : "text-muted-foreground hover:text-primary"
-                }`}
+                <UploadCloud className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0">
+                <span className="font-soft block text-[13px] font-bold text-foreground">Upload art</span>
+                <span className="font-soft block text-[11px] font-semibold leading-tight text-muted-foreground">
+                  PNG · JPEG · WebP · GIF
+                </span>
+              </span>
+            </ArtSourceCard>
+            <ArtSourceCard
+              dark
+              selected={source === "giphy"}
+              onClick={() => {
+                setSource("giphy");
+                pick(null);
+              }}
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00ff66] text-black"
+                aria-hidden
               >
-                <Search className="h-3.5 w-3.5" /> GIPHY
-              </button>
-            </div>
+                <span className="font-display text-[11px] font-black leading-none tracking-tight">GIF</span>
+              </span>
+              <span className="min-w-0">
+                <span className="font-soft block text-[13px] font-bold text-white">Find a GIF</span>
+                <span className="font-soft block text-[11px] font-semibold leading-tight text-white/55">
+                  Search GIPHY — millions to pick
+                </span>
+              </span>
+            </ArtSourceCard>
           </div>
         ) : (
           <label className="font-soft text-sm font-bold text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
@@ -732,6 +791,12 @@ function ImageForm({
               alt={gifPick.title ? `Selected GIF: ${gifPick.title}` : "Selected GIF"}
               className="max-h-48 rounded-lg object-contain"
             />
+            <span
+              aria-hidden
+              className="absolute bottom-2 left-2 rounded bg-black/85 px-1.5 py-0.5 text-[9px] font-black leading-none tracking-[0.12em] text-white"
+            >
+              VIA GIPHY
+            </span>
             <button
               aria-label="Remove selected GIF"
               onClick={() => setGifPick(null)}
@@ -741,7 +806,9 @@ function ImageForm({
             </button>
           </div>
         ) : (
-          <GiphyPicker onPick={(g) => setGifPick(g)} />
+          <div className="animate-in fade-in slide-in-from-bottom-1 rounded-2xl border border-[#00ff66]/35 bg-[#00ff66]/[0.05] p-2.5 duration-200">
+            <GiphyPicker onPick={(g) => setGifPick(g)} />
+          </div>
         )}
         {source === "giphy" && (
           <p className="font-soft text-[11px] leading-snug text-muted-foreground">
