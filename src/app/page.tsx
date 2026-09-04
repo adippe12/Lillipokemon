@@ -647,7 +647,7 @@ export default function PokedexPage() {
               className="candy-card relative flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-popover px-5 py-4 pr-7 text-left"
             >
               <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_10px_rgba(240,107,168,0.15)]"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_10px_rgba(240,107,168,0.15)]"
                 style={{ background: toastMon ? spriteBubbleBg(toastMon.name, toastMon.id.slice(0, 8)) : "#fdeff5" }}
               >
                 {toastMon ? (
@@ -655,7 +655,7 @@ export default function PokedexPage() {
                     <img
                       src={publicImageUrl(toastMon.image_path)}
                       alt={`${toastMon.name} artwork`}
-                      className="h-9 w-9 rounded object-contain"
+                      className="h-full w-full rounded-full object-cover"
                     />
                   ) : (
                     <MonSprite name={toast.name} seed={toastMon.id.slice(0, 8)} size={36} needsArt />
@@ -911,14 +911,14 @@ function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) =
         LATEST MON
       </span>
       <div
-        className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_4px_12px_rgba(240,107,168,0.14)]"
+        className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_12px_rgba(240,107,168,0.14)]"
         style={{ background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)) }}
       >
         {mon.image_path ? (
           <img
             src={publicImageUrl(mon.image_path)}
             alt={`${mon.name} artwork`}
-            className="h-16 w-16 rounded object-contain"
+            className="h-full w-full rounded-full object-cover"
           />
         ) : (
           <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} needsArt />

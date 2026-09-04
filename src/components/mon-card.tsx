@@ -53,7 +53,7 @@ export function MonCard({
       )}
 
       <div
-        className={`floaty mt-1 flex h-24 w-24 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-108 ${
+        className={`floaty mt-1 flex h-24 w-24 items-center justify-center rounded-full border p-[3px] transition-transform duration-200 group-hover:scale-108 ${
           fresh ? "ring-2 ring-primary/40" : ""
         }`}
         style={{
@@ -66,7 +66,7 @@ export function MonCard({
           <img
             src={publicImageUrl(mon.image_path)}
             alt={`${mon.name} artwork`}
-            className="h-20 w-20 rounded object-contain [image-rendering:auto]"
+            className="h-full w-full rounded-full object-cover"
             loading="lazy"
           />
         ) : (

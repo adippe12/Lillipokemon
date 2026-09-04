@@ -94,7 +94,7 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
       {/* header */}
       <div className="flex items-start gap-4">
         <div
-          className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border"
+          className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px]"
           style={{
             background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
             borderColor: "rgba(255,255,255,0.9)",
@@ -110,7 +110,7 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
             <img
               src={publicImageUrl(mon.image_path)}
               alt={`${mon.name} approved artwork`}
-              className="relative h-24 w-24 rounded-lg object-contain"
+              className="relative h-full w-full rounded-full object-cover"
             />
           ) : (
             <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />

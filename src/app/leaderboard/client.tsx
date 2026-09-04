@@ -238,18 +238,18 @@ export function LeaderboardClient() {
               <div key={m.id} className="flex items-center gap-3 py-1.5">
                 <RankChip i={i} />
                 <div
-                  className="floaty flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-[0_3px_8px_rgba(240,107,168,0.12)]"
+                  className="floaty flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_3px_8px_rgba(240,107,168,0.12)]"
                   style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}
                 >
                   {m.image_path ? (
                     <img
                       src={publicImageUrl(m.image_path)}
                       alt=""
-                      className="h-9 w-9 object-contain"
+                      className="h-full w-full rounded-full object-cover"
                       loading="lazy"
                     />
                   ) : (
-                    <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={36} needsArt />
+                    <MonSprite name={m.name} seed={m.id.slice(0, 8)} size={32} needsArt />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
