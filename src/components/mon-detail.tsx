@@ -22,6 +22,7 @@ import {
 } from "@/lib/mons";
 import { MonSprite, spriteBubbleBg } from "./mon-sprite";
 import { MonTypeChip } from "./mon-type-chip";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +38,14 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  AtSign,
+  BookOpen,
+  Calendar,
   Check,
+  Crown,
+  Flame,
   FlaskConical,
+  Heart,
   ImageIcon,
   Link2,
   Loader2,
@@ -91,76 +98,100 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
 
   return (
     <div className="space-y-5">
-      {/* header */}
-      <div className="flex items-start gap-4">
+      {/* header — soft gradient hero card tinted with the mon's type color */}
+      <div className="relative overflow-hidden rounded-[1.4rem] border border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 p-4 shadow-[0_6px_18px_rgba(240,107,168,0.08)]">
         <div
-          className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px]"
-          style={{
-            background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
-            borderColor: "rgba(255,255,255,0.9)",
-            boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
-          }}
-        >
-          <span
-            className="pointer-events-none absolute inset-0 rounded-full opacity-60"
-            style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
-            aria-hidden
-          />
-          {mon.image_path ? (
-            <img
-              src={publicImageUrl(mon.image_path)}
-              alt={`${mon.name} approved artwork`}
-              className="relative h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
-          )}
-        </div>
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-soft text-lg font-bold text-muted-foreground">{pokedexNumber(mon.pokedex_no)}</span>
-            <h2 className="font-display truncate text-xl font-bold text-primary">
-              {displayName(mon.name)}
-            </h2>
-            <MonTypeChip name={mon.name} />
-          </div>
-          <div className="flex flex-wrap gap-1.5 font-soft text-[13px] font-bold">
-            <Badge variant="secondary" className="rounded-full border border-primary/25 bg-primary/10 text-primary">
-              {formatNumber(mon.spotted_count)} spotted
-            </Badge>
-            <Badge variant="secondary" className="rounded-full border-border">
-              found by @{mon.discovered_by}
-            </Badge>
-            <Badge variant="secondary" className="rounded-full border-border">
-              {formatDate(mon.discovered_at)}
-            </Badge>
-            {pendingCount > 0 && (
-              <Badge className="rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
-                <FlaskConical className="mr-1 h-3 w-3" /> {pendingCount} in review
-              </Badge>
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(260px 150px at 90% -10%, ${typeColor(mon.name)}2b, transparent)` }}
+        />
+        <div className="relative flex items-start gap-4">
+          <div
+            className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px]"
+            style={{
+              background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
+              borderColor: "rgba(255,255,255,0.9)",
+              boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
+            }}
+          >
+            {!mon.image_path && (
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full opacity-60"
+                style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
+                aria-hidden
+              />
+            )}
+            {mon.image_path ? (
+              <img
+                src={publicImageUrl(mon.image_path)}
+                alt={`${mon.name} approved artwork`}
+                className="relative h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
             )}
           </div>
-          <p className="font-soft text-sm font-semibold text-muted-foreground">
-            last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
-          </p>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[13px] font-bold text-muted-foreground">
+                {pokedexNumber(mon.pokedex_no)}
+              </span>
+              <h2 className="font-display truncate text-xl font-extrabold text-foreground">
+                {displayName(mon.name)}
+              </h2>
+              <MonTypeChip name={mon.name} />
+            </div>
+            <div className="flex flex-wrap gap-1.5 font-soft text-[12px] font-bold">
+              <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
+                <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
+              </Badge>
+              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
+              </Badge>
+              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
+              </Badge>
+              {!mon.image_path && (
+                <Badge variant="secondary" className="gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary">
+                  <ImageIcon className="h-3 w-3" aria-hidden /> art wanted
+                </Badge>
+              )}
+              {pendingCount > 0 && (
+                <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
+                  <FlaskConical className="h-3 w-3" /> {pendingCount} in review
+                </Badge>
+              )}
+            </div>
+            <p className="font-soft flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <span className="pulse-dot" aria-hidden />
+              last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
+            </p>
+          </div>
+          <ShareButton mon={mon} />
         </div>
-        <ShareButton mon={mon} />
       </div>
 
       {/* popularity vs top species */}
       {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
 
       {/* description */}
-      <div className="rounded-2xl border border-border bg-secondary/70 p-4">
-        <h3 className="font-display mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Story</h3>
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
+        <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
+          &ldquo;
+        </span>
+        <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+          <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
+        </h3>
         {mon.description ? (
-          <blockquote className="space-y-1">
-            <p className="text-sm leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
-            <footer className="font-soft text-xs font-bold text-pokedex-cyan">— @{mon.description_by}</footer>
+          <blockquote className="space-y-1.5">
+            <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
+            <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
+              <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
+            </footer>
           </blockquote>
         ) : (
-          <p className="text-sm italic text-muted-foreground">
-            No approved research yet. This creature&apos;s behaviour is undocumented — propose a description below!
+          <p className="text-sm leading-relaxed italic text-muted-foreground">
+            No approved research yet — this creature&apos;s behaviour is undocumented. Be the first to describe it below!
           </p>
         )}
       </div>
@@ -214,7 +245,7 @@ function ProposalSection({
           </button>
         </div>
       )}
-      <Tabs defaultValue="description" className="w-full">
+      <Tabs defaultValue={mon.description ? "image" : "description"} className="w-full">
         <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
           <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
             <PenLine className="h-4 w-4" /> Describe it
@@ -678,9 +709,13 @@ function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: n
   return (
     <div className="rounded-2xl border border-border bg-secondary/60 px-4 py-3">
       <div className="mb-1.5 flex items-center justify-between font-soft text-xs font-bold">
-        <span className="text-muted-foreground">DEX POPULARITY</span>
-        <span className={isTop ? "text-pokedex-yellow" : "text-muted-foreground"}>
-          {isTop ? "top species!" : `${formatNumber(maxSpotted)} top record`}
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Flame className="h-3.5 w-3.5 text-primary" aria-hidden />
+          DEX POPULARITY · {formatNumber(spotted)} spots
+        </span>
+        <span className={cn("flex items-center gap-1", isTop ? "text-pokedex-yellow" : "text-muted-foreground")}>
+          {isTop && <Crown className="h-3.5 w-3.5" aria-hidden />}
+          {isTop ? "top species!" : `${Math.round((spotted / maxSpotted) * 100)}% of top record`}
         </span>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-white shadow-[inset_0_1px_3px_rgba(240,107,168,0.15)]">

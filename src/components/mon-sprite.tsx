@@ -215,7 +215,7 @@ export function MonSprite({
       {svg}
       <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
         <span
-          className="font-display flex items-center justify-center rounded-full border-2 border-white bg-white/85 font-black text-foreground/75 shadow-[0_1px_6px_rgba(0,0,0,0.14)]"
+          className="font-display flex items-center justify-center rounded-full border-2 border-white/90 bg-white/75 font-black text-primary/80 shadow-[0_2px_10px_rgba(240,107,168,0.22)] backdrop-blur-[2px]"
           style={{
             width: Math.round(size * 0.52),
             height: Math.round(size * 0.52),

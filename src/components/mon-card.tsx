@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageIcon } from "lucide-react";
 import { MonSprite, spriteBubbleBg } from "./mon-sprite";
 import { MonTypeChip } from "./mon-type-chip";
 import { publicImageUrl } from "@/lib/supabase";
@@ -38,7 +39,7 @@ export function MonCard({
       }`}
       aria-label={`Open ${mon.name} entry`}
     >
-      <span className="font-soft absolute left-4 top-3 text-sm font-bold text-muted-foreground">
+      <span className="font-soft absolute left-3 top-3 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
         {pokedexNumber(mon.pokedex_no)}
       </span>
       {pendingCount > 0 && (
@@ -83,6 +84,12 @@ export function MonCard({
           <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-primary">
             {formatNumber(mon.spotted_count)} spotted
           </span>
+          {!mon.image_path && (
+            <span className="flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-1 text-primary">
+              <ImageIcon className="h-3 w-3" aria-hidden />
+              art wanted
+            </span>
+          )}
           <span className="max-w-full truncate rounded-full border border-border bg-secondary px-2 py-1 text-muted-foreground">
             by @{mon.discovered_by}
           </span>

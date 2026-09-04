@@ -421,6 +421,16 @@
   display: none;
 }
 
+/* soft pastel checkerboard — reveals transparency in artwork previews */
+.checker {
+  background-color: #fdf8f5;
+  background-image:
+    linear-gradient(45deg, #f6e7ee 25%, transparent 25%, transparent 75%, #f6e7ee 75%),
+    linear-gradient(45deg, #f6e7ee 25%, transparent 25%, transparent 75%, #f6e7ee 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 9px 9px;
+}
+
 /* respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
   .floaty,
