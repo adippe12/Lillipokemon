@@ -1,10 +1,10 @@
 "use client";
 
-import { ImageIcon } from "lucide-react";
+import { AtSign, Activity } from "lucide-react";
 import { MonSprite, spriteBubbleBg } from "./mon-sprite";
 import { MonTypeChip } from "./mon-type-chip";
 import { publicImageUrl } from "@/lib/supabase";
-import { displayName, pokedexNumber, formatNumber, isFreshDiscovery } from "@/lib/mons";
+import { displayName, pokedexNumber, formatNumber, relativeTime, isFreshDiscovery } from "@/lib/mons";
 
 export function MonCard({
   mon,
@@ -56,7 +56,7 @@ export function MonCard({
       <div
         className={`floaty mt-1 flex h-24 w-24 items-center justify-center rounded-full border p-[3px] transition-transform duration-200 group-hover:scale-108 ${
           fresh ? "ring-2 ring-primary/40" : ""
-        }`}
+        } ${!mon.image_path ? "halo-dash" : ""}`}
         style={{
           background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
           borderColor: "rgba(255,255,255,0.8)",
@@ -75,7 +75,7 @@ export function MonCard({
         )}
       </div>
 
-      <div className="w-full space-y-2">
+      <div className="flex w-full flex-1 flex-col space-y-2">
         <h3 className="font-display text-center text-lg font-bold break-words text-foreground transition-colors group-hover:text-primary">
           {displayName(mon.name)}
         </h3>
@@ -84,19 +84,20 @@ export function MonCard({
           <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-primary">
             {formatNumber(mon.spotted_count)} spotted
           </span>
-          {!mon.image_path && (
-            <span className="flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-1 text-primary">
-              <ImageIcon className="h-3 w-3" aria-hidden />
-              art wanted
-            </span>
-          )}
-          <span className="max-w-full truncate rounded-full border border-border bg-secondary px-2 py-1 text-muted-foreground">
-            by @{mon.discovered_by}
-          </span>
         </div>
         <p className="line-clamp-2 min-h-[2.4em] text-center text-xs leading-relaxed text-muted-foreground">
           {mon.description ? mon.description : "No research yet — be the first to describe it!"}
         </p>
+        <div className="font-soft mt-auto flex w-full items-center justify-between gap-2 border-t border-border/70 pt-2 text-[11px] font-bold text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-1">
+            <AtSign className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">{mon.discovered_by}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1" title="Last spotted in chat">
+            <Activity className="h-3 w-3 shrink-0 text-pokedex-cyan" aria-hidden />
+            seen {relativeTime(mon.last_spotted_at)}
+          </span>
+        </div>
       </div>
     </button>
   );

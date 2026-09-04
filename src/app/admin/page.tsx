@@ -328,7 +328,10 @@ function Console() {
           {mons.map((m) => (
             <div key={m.id} className="space-y-2">
               <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
-                <div className="floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border p-[3px]" style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}>
+                <div
+                  className={`floaty flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border p-[3px] ${!m.image_path ? "halo-dash" : ""}`}
+                  style={{ background: spriteBubbleBg(m.name, m.id.slice(0, 8)) }}
+                >
                   {m.image_path ? (
                     <img src={publicImageUrl(m.image_path)} alt="" className="h-full w-full rounded-full object-cover" />
                   ) : (

@@ -55,6 +55,7 @@ import {
   Sparkles,
   UploadCloud,
   X,
+  ZoomIn,
 } from "lucide-react";
 
 type Props = {
@@ -83,6 +84,9 @@ export function MonDetailDialog({ mon, pendingCount, maxSpotted, onOpenChange }:
 }
 
 function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount: number; maxSpotted: number; onOpenChange: (o: boolean) => void }) {
+  // Full-size artwork viewer (lightbox) — object-cover crops the hero medallion,
+  // so clicking it opens the uncropped original over a checkerboard.
+  const [zoom, setZoom] = useState(false);
   // Dialog content mounts only after user interaction (post-hydration),
   // so a lazy initializer reading localStorage is hydration-safe.
   const [nickname, setNickname] = useState(() => {
@@ -107,7 +111,9 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
         />
         <div className="relative flex items-start gap-4">
           <div
-            className="floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px]"
+            className={`floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px] ${
+              !mon.image_path ? "halo-dash halo-dash-spin" : ""
+            }`}
             style={{
               background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
               borderColor: "rgba(255,255,255,0.9)",
@@ -122,11 +128,7 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
               />
             )}
             {mon.image_path ? (
-              <img
-                src={publicImageUrl(mon.image_path)}
-                alt={`${mon.name} approved artwork`}
-                className="relative h-full w-full rounded-full object-cover"
-              />
+              <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
             ) : (
               <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
             )}
@@ -171,6 +173,27 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
         </div>
       </div>
 
+      {/* artists-wanted nudge — turn the missing art into a call to action */}
+      {!mon.image_path && (
+        <div className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/5 px-4 py-3">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-white shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+            aria-hidden
+          >
+            <ImageIcon className="h-4 w-4 text-primary" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-soft text-[13px] font-bold text-foreground">
+              This mon is waiting for its official portrait!
+            </p>
+            <p className="font-soft text-xs font-semibold text-muted-foreground">
+              Artists of chat — use the <span className="font-bold text-primary">Submit art</span> tab below to
+              immortalize it.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* popularity vs top species */}
       {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
 
@@ -198,7 +221,59 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
 
       {/* proposal form */}
       <ProposalSection mon={mon} nickname={nickname} setNickname={setNickname} />
+
+      {/* full-size artwork lightbox — click the hero medallion to inspect the
+          uncropped original (object-cover center-crops wide/tall art) */}
+      {mon.image_path && (
+        <Dialog open={zoom} onOpenChange={setZoom}>
+          <DialogContent
+            showCloseButton
+            className="max-w-[min(92vw,860px)] rounded-3xl border-0 bg-transparent p-2 shadow-none focus:outline-none [&>button]:rounded-full [&>button]:border [&>button]:border-border [&>button]:bg-white/90 [&>button]:shadow-md"
+            style={{ width: "min(92vw, 860px)" }}
+          >
+            <DialogHeader className="sr-only">
+              <DialogTitle>{displayName(mon.name)} full artwork</DialogTitle>
+              <DialogDescription>Uncropped view of the approved artwork.</DialogDescription>
+            </DialogHeader>
+            <img
+              src={publicImageUrl(mon.image_path)}
+              alt={`${mon.name} full artwork`}
+              className="checker max-h-[78vh] w-full rounded-2xl object-contain"
+            />
+            <p className="font-soft text-center text-xs font-bold text-white/90 drop-shadow">
+              {displayName(mon.name)} — official portrait
+            </p>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
+  );
+}
+
+/** Hero medallion artwork — click to open the full-size lightbox. */
+function HeroArt({ path, name, onZoom }: { path: string; name: string; onZoom: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onZoom}
+      aria-label={`View full-size artwork of ${displayName(name)}`}
+      title="View full size"
+      className="group/art relative block h-full w-full cursor-zoom-in rounded-full focus-visible:outline-2"
+    >
+      <img
+        src={publicImageUrl(path)}
+        alt={`${name} approved artwork`}
+        className="relative h-full w-full rounded-full object-cover"
+      />
+      <span
+        aria-hidden
+        className="absolute inset-0 flex items-center justify-center rounded-full bg-[#3a2b34]/0 opacity-0 transition group-hover/art:bg-[#3a2b34]/25 group-hover/art:opacity-100"
+      >
+        <span className="flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-md">
+          <ZoomIn className="h-3 w-3" /> full size
+        </span>
+      </span>
+    </button>
   );
 }
 

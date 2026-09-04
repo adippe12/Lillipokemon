@@ -411,6 +411,28 @@
   animation: new-glow 2s ease-in-out infinite;
 }
 
+/* "art wanted" halo — a dashed ring floating just outside the sprite bubble
+   (add .halo-dash to the bubble; combine with .halo-dash-spin to rotate) */
+.halo-dash {
+  position: relative;
+}
+.halo-dash::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 9999px;
+  border: 2px dashed rgba(240, 107, 168, 0.45);
+  pointer-events: none;
+}
+.halo-dash-spin::after {
+  animation: halo-spin 14s linear infinite;
+}
+@keyframes halo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* CHAT BUZZ ticker: hide the scrollbar, softly fade both edges */
 .buzz-track {
   scrollbar-width: none;
@@ -442,6 +464,7 @@
   .anim-toast,
   .toast-timer-bar,
   .new-glow,
+  .halo-dash-spin::after,
   .caret {
     animation: none !important;
   }

@@ -169,6 +169,12 @@ function accentColor(rng: () => number, hue: number): string {
  * and its bubble always agree — deterministic per name+seed.
  */
 
+/**
+ * Mystery-mon treatment: the pixel sprite stays crisp and fully visible
+ * (it is the creature's identity until real art lands), and a small
+ * solid-pink "?" badge pinned to the bottom-right corner signals that
+ * official artwork is still wanted — like a "quest available" marker.
+ */
 export function MonSprite({
   name,
   seed,
@@ -182,15 +188,12 @@ export function MonSprite({
   size?: number;
   shiny?: boolean;
   className?: string;
-  /** True when the mon has no approved artwork yet: frosts the sprite and
-   *  stamps a "?" on top so chat can tell the picture is still missing. */
+  /** True when the mon has no approved artwork yet: stamps a "?" quest
+   *  badge on top so chat can tell the picture is still missing. */
   needsArt?: boolean;
 }) {
   const pixels = useMemo(() => buildSprite(name, seed ?? name, shiny), [name, seed, shiny]);
 
-  // Blur scales with the rendered size so the frost reads the same whether
-  // the sprite is a 36px toast bubble or a 100px detail header; the slight
-  // scale-up stops the gaussian bleed from shrinking the silhouette.
   const svg = (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -198,7 +201,6 @@ export function MonSprite({
       height={size}
       shapeRendering="crispEdges"
       className={className}
-      style={needsArt ? { filter: `blur(${Math.max(2, Math.round(size * 0.035))}px)`, transform: "scale(1.08)" } : undefined}
       role="img"
       aria-label={needsArt ? `Placeholder sprite of ${name} — artwork still needed` : `Pixel sprite of ${name}`}
     >
@@ -210,22 +212,25 @@ export function MonSprite({
 
   if (!needsArt) return svg;
 
+  const badge = Math.max(14, Math.round(size * 0.42));
+  const badgeFont = Math.max(9, Math.round(size * 0.25));
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       {svg}
-      <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
-        <span
-          className="font-display flex items-center justify-center rounded-full border-2 border-white/90 bg-white/75 font-black text-primary/80 shadow-[0_2px_10px_rgba(240,107,168,0.22)] backdrop-blur-[2px]"
-          style={{
-            width: Math.round(size * 0.52),
-            height: Math.round(size * 0.52),
-            fontSize: Math.round(size * 0.3),
-            lineHeight: 1,
-            paddingBottom: Math.round(size * 0.02),
-          }}
-        >
-          ?
-        </span>
+      <span
+        aria-hidden
+        className="font-display absolute flex items-center justify-center rounded-full border-2 border-white bg-primary font-black text-primary-foreground shadow-[0_2px_8px_rgba(240,107,168,0.35)]"
+        style={{
+          right: -Math.round(size * 0.02),
+          bottom: -Math.round(size * 0.02),
+          width: badge,
+          height: badge,
+          fontSize: badgeFont,
+          lineHeight: 1,
+          paddingBottom: Math.round(size * 0.01),
+        }}
+      >
+        ?
       </span>
     </span>
   );

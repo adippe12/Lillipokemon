@@ -911,7 +911,9 @@ function SpotlightMon({ mon, onOpen }: { mon: Mon | null; onOpen: (id: string) =
         LATEST MON
       </span>
       <div
-        className="floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_12px_rgba(240,107,168,0.14)]"
+        className={`floaty flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-white p-[3px] shadow-[0_4px_12px_rgba(240,107,168,0.14)] ${
+          !mon.image_path ? "halo-dash" : ""
+        }`}
         style={{ background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)) }}
       >
         {mon.image_path ? (
