@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
 import { GIPHY_ENABLED, fetchGifAsFile, type GiphyGif } from "@/lib/giphy";
 import { GiphyPicker } from "./giphy-picker";
@@ -31,7 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,10 +39,12 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  ArrowLeft,
   AtSign,
   BookOpen,
   Calendar,
   Check,
+  ChevronRight,
   Crown,
   Flame,
   FlaskConical,
@@ -91,14 +93,11 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
   // Full-size artwork viewer (lightbox) — object-cover crops the hero medallion,
   // so clicking it opens the uncropped original over a checkerboard.
   const [zoom, setZoom] = useState(false);
-  // Sheet layout: fixed hero + one tabbed body. The landing tab is chosen by
-  // what the entry is still missing (complete entries open on the dossier).
-  const [tab, setTab] = useState<"entry" | "improve">(() =>
-    mon.description && mon.image_path ? "entry" : "improve",
-  );
-  const [editKind, setEditKind] = useState<"description" | "image">(() =>
-    mon.description ? "image" : "description",
-  );
+  // Single-flow layout: the body is one dex page. Contributing swaps the body
+  // to a focused form view; the back chip always returns to the entry.
+  const [view, setView] = useState<"entry" | "describe" | "art">("entry");
+  const [showImprove, setShowImprove] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Dialog content mounts only after user interaction (post-hydration),
   // so a lazy initializer reading localStorage is hydration-safe.
   const [nickname, setNickname] = useState(() => {
@@ -111,206 +110,192 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
   useEffect(() => {
     if (nickname.trim()) localStorage.setItem("lp_nick", nickname.trim().slice(0, MAX_NICKNAME));
   }, [nickname]);
+  // Fresh views always start from the top.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [view]);
 
   return (
     <>
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab(v as "entry" | "improve")}
-        className="flex min-h-0 flex-1 flex-col gap-0"
-      >
-        {/* hero — fixed sheet header, tinted with the mon's type color */}
-        <div className="relative shrink-0 overflow-hidden border-b border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 px-5 pb-4 pt-5">
+      {/* hero — fixed sheet header, tinted with the mon's type color */}
+      <div className="relative shrink-0 overflow-hidden border-b border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 px-5 pb-4 pt-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(260px 150px at 88% -12%, ${typeColor(mon.name)}2b, transparent)` }}
+        />
+        {/* floating action chips — share + close, app-style */}
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
+          <ShareButton mon={mon} />
+          <DialogClose
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white/90 text-muted-foreground shadow-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <X className="h-4 w-4" />
+          </DialogClose>
+        </div>
+
+        <div className="relative flex items-start gap-4">
           <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{ background: `radial-gradient(260px 150px at 88% -12%, ${typeColor(mon.name)}2b, transparent)` }}
-          />
-          {/* floating action chips — share + close, app-style */}
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
-            <ShareButton mon={mon} />
-            <DialogClose
-              aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white/90 text-muted-foreground shadow-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            >
-              <X className="h-4 w-4" />
-            </DialogClose>
-          </div>
-
-          <div className="relative flex items-start gap-4">
-            <div
-              className={`floaty relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border p-[3px] ${
-                !mon.image_path ? "halo-dash halo-dash-spin" : ""
-              }`}
-              style={{
-                background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
-                borderColor: "rgba(255,255,255,0.9)",
-                boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
-              }}
-            >
-              {!mon.image_path && (
-                <span
-                  className="pointer-events-none absolute inset-0 rounded-full opacity-60"
-                  style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
-                  aria-hidden
-                />
-              )}
-              {mon.image_path ? (
-                <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
-              ) : (
-                <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} className="relative" needsArt />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2 pr-20 sm:pr-24">
-                <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[12px] font-bold text-muted-foreground">
-                  {pokedexNumber(mon.pokedex_no)}
-                </span>
-                <h2 className="font-display truncate text-lg font-extrabold text-foreground">
-                  {displayName(mon.name)}
-                </h2>
-                <MonTypeChip name={mon.name} />
-              </div>
-              <div className="flex flex-wrap gap-1.5 font-soft text-[11px] font-bold">
-                <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
-                  <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
-                </Badge>
-                <Badge variant="secondary" className="gap-1 rounded-full border-border">
-                  <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
-                </Badge>
-                <Badge variant="secondary" className="gap-1 rounded-full border-border">
-                  <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
-                </Badge>
-                {!mon.image_path && (
-                  <Badge variant="secondary" className="gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary">
-                    <ImageIcon className="h-3 w-3" aria-hidden /> art wanted
-                  </Badge>
-                )}
-                {pendingCount > 0 && (
-                  <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
-                    <FlaskConical className="h-3 w-3" /> {pendingCount} in review
-                  </Badge>
-                )}
-              </div>
-              <p className="font-soft flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                <span className="pulse-dot" aria-hidden />
-                last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
-              </p>
-            </div>
-          </div>
-
-          {/* sheet tabs — Entry reads the dossier · Improve submits to it */}
-          <TabsList className="relative mt-4 grid w-full grid-cols-2 rounded-full border border-border/60 bg-white/70 p-1 shadow-[0_2px_8px_rgba(240,107,168,0.08)]">
-            <TabsTrigger value="entry" className="font-soft gap-1.5 rounded-full text-[13px] font-bold">
-              <BookOpen className="h-4 w-4" /> Entry
-            </TabsTrigger>
-            <TabsTrigger value="improve" className="font-soft gap-1.5 rounded-full text-[13px] font-bold">
-              <PenLine className="h-4 w-4" /> Improve
-              {(!mon.description || !mon.image_path) && (
-                <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* body — the only scrolling region inside the sheet */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {/* dossier */}
-          <TabsContent value="entry" className="mt-0 space-y-3 p-5 pb-6">
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
-              <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
-                &ldquo;
-              </span>
-              <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
-              </h3>
-              {mon.description ? (
-                <blockquote className="space-y-1.5">
-                  <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
-                  <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
-                    <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
-                  </footer>
-                </blockquote>
-              ) : (
-                <p className="text-sm leading-relaxed italic text-muted-foreground">
-                  No approved research yet — this creature&apos;s behaviour is undocumented. Open the{" "}
-                  <span className="font-bold not-italic text-primary">Improve</span> tab to be the first to describe it!
-                </p>
-              )}
-            </div>
-
-            {/* popularity vs top species */}
-            {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
-
-            {/* art-wanted CTA — one tap opens the art studio */}
+            className={`floaty relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border p-[3px] ${
+              !mon.image_path ? "halo-dash halo-dash-spin" : ""
+            }`}
+            style={{
+              background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
+              borderColor: "rgba(255,255,255,0.9)",
+              boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
+            }}
+          >
             {!mon.image_path && (
-              <button
-                type="button"
-                onClick={() => {
-                  setTab("improve");
-                  setEditKind("image");
-                }}
-                className="group flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/5 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/10"
-              >
-                <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-white shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
-                  aria-hidden
-                >
-                  <ImageIcon className="h-4 w-4 text-primary" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="font-soft block text-[13px] font-bold text-foreground">
-                    This mon is waiting for its official portrait!
-                  </span>
-                  <span className="font-soft block text-xs font-semibold text-muted-foreground">
-                    Artists of chat — immortalize it in the art studio.
-                  </span>
-                </span>
-                <PenLine className="h-4 w-4 shrink-0 text-primary transition group-hover:translate-x-0.5" aria-hidden />
-              </button>
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full opacity-60"
+                style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
+                aria-hidden
+              />
             )}
-          </TabsContent>
-
-          {/* proposal studio — the edit forms live inside the sheet now */}
-          <TabsContent value="improve" className="mt-0 space-y-3 p-5 pb-6">
-            <div
-              className="flex rounded-full border border-border/60 bg-secondary/70 p-1"
-              role="group"
-              aria-label="Choose what to submit"
-            >
-              <button
-                type="button"
-                onClick={() => setEditKind("description")}
-                aria-pressed={editKind === "description"}
-                className={`font-soft flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
-                  editKind === "description"
-                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
-                    : "text-muted-foreground hover:text-primary"
-                }`}
-              >
-                <PenLine className="h-4 w-4" /> Describe it
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditKind("image")}
-                aria-pressed={editKind === "image"}
-                className={`font-soft flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
-                  editKind === "image"
-                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
-                    : "text-muted-foreground hover:text-primary"
-                }`}
-              >
-                <ImageIcon className="h-4 w-4" /> Submit art
-              </button>
-            </div>
-            {editKind === "description" ? (
-              <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
+            {mon.image_path ? (
+              <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
             ) : (
-              <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
+              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} className="relative" needsArt />
             )}
-          </TabsContent>
+          </div>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2 pr-20 sm:pr-24">
+              <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[12px] font-bold text-muted-foreground">
+                {pokedexNumber(mon.pokedex_no)}
+              </span>
+              <h2 className="font-display truncate text-lg font-extrabold text-foreground">
+                {displayName(mon.name)}
+              </h2>
+              <MonTypeChip name={mon.name} />
+            </div>
+            <div className="flex flex-wrap gap-1.5 font-soft text-[11px] font-bold">
+              <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
+                <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
+              </Badge>
+              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
+              </Badge>
+              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
+              </Badge>
+              {pendingCount > 0 && (
+                <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
+                  <FlaskConical className="h-3 w-3" /> {pendingCount} in review
+                </Badge>
+              )}
+            </div>
+            <p className="font-soft flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <span className="pulse-dot" aria-hidden />
+              last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
+            </p>
+          </div>
         </div>
-      </Tabs>
+      </div>
+
+      {/* body — the only scrolling region inside the sheet */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div key={view} className="animate-in fade-in slide-in-from-bottom-2 space-y-4 p-5 pb-6 duration-200">
+          {view === "entry" ? (
+            <>
+              {/* story */}
+              <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
+                <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
+                  &ldquo;
+                </span>
+                <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
+                </h3>
+                {mon.description ? (
+                  <blockquote className="space-y-1.5">
+                    <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
+                    <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
+                      <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
+                    </footer>
+                  </blockquote>
+                ) : (
+                  <p className="text-sm leading-relaxed italic text-muted-foreground">
+                    No approved research yet — this creature&apos;s behaviour is undocumented.
+                  </p>
+                )}
+              </div>
+
+              {/* popularity vs top species */}
+              {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
+
+              {/* contribute — the one call to action, at the natural end of the page */}
+              <section aria-label="Contribute to this entry">
+                <div className="flex items-center gap-3" aria-hidden>
+                  <span className="h-px flex-1 bg-border/70" />
+                  <h3 className="font-soft text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                    {mon.description && mon.image_path ? "Improve this entry" : "Help complete this entry"}
+                  </h3>
+                  <span className="h-px flex-1 bg-border/70" />
+                </div>
+
+                {mon.description && mon.image_path && !showImprove ? (
+                  <div className="mt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowImprove(true)}
+                      className="font-soft inline-flex items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.06)] transition hover:border-primary/40 hover:text-primary"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                      This entry is complete — improve it?
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {(!mon.description || showImprove) && (
+                      <ContributeCard
+                        icon={<PenLine className="h-5 w-5" />}
+                        tone="primary"
+                        title={mon.description ? "Propose a better story" : "Write the story"}
+                        sub={
+                          mon.description
+                            ? "Share a sharper description with the channel team"
+                            : "Tell chat what this mon is all about"
+                        }
+                        onClick={() => setView("describe")}
+                      />
+                    )}
+                    {(!mon.image_path || showImprove) && (
+                      <ContributeCard
+                        icon={<ImageIcon className="h-5 w-5" />}
+                        tone="cyan"
+                        title={mon.image_path ? "Replace the artwork" : "Submit artwork"}
+                        sub={
+                          mon.image_path
+                            ? "Upload a new official portrait"
+                            : `Give ${displayName(mon.name)} its official portrait`
+                        }
+                        onClick={() => setView("art")}
+                      />
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
+          ) : (
+            <>
+              {/* focused form view — one thing on screen, back chip to return */}
+              <button
+                type="button"
+                onClick={() => setView("entry")}
+                className="font-soft inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:text-primary"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+                back to entry
+              </button>
+              {view === "describe" ? (
+                <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
+              ) : (
+                <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* full-size artwork lightbox — click the hero medallion to inspect the
           uncropped original (object-cover center-crops wide/tall art) */}
@@ -367,6 +352,46 @@ function HeroArt({ path, name, onZoom }: { path: string; name: string; onZoom: (
   );
 }
 
+/** Big friendly choice card in the contribute section. */
+function ContributeCard({
+  icon,
+  tone,
+  title,
+  sub,
+  onClick,
+}: {
+  icon: ReactNode;
+  tone: "primary" | "cyan";
+  title: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-3.5 rounded-2xl border border-border bg-white/80 p-3.5 text-left shadow-[0_2px_10px_rgba(240,107,168,0.06)] transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_10px_24px_rgba(240,107,168,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition",
+          tone === "primary" ? "bg-primary/10 text-primary" : "bg-pokedex-cyan/10 text-pokedex-cyan",
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="font-soft block text-sm font-bold text-foreground">{title}</span>
+        <span className="font-soft block text-xs font-semibold text-muted-foreground">{sub}</span>
+      </span>
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary"
+        aria-hidden
+      />
+    </button>
+  );
+}
 
 function NicknameField({
   nickname,
@@ -377,17 +402,23 @@ function NicknameField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor="lp-nick" className="font-soft text-sm font-bold text-muted-foreground">
-        Your name (shown as credit after approval)
+      <label htmlFor="lp-nick" className="font-soft text-xs font-bold text-muted-foreground">
+        Your name — shown as credit after approval
       </label>
-      <Input
-        id="lp-nick"
-        value={nickname}
-        maxLength={MAX_NICKNAME}
-        onChange={(e) => setNickname(e.target.value)}
-        placeholder="e.g. chatgoblin"
-        className="rounded-full bg-secondary/70 font-soft font-semibold"
-      />
+      <div className="relative">
+        <AtSign
+          className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          id="lp-nick"
+          value={nickname}
+          maxLength={MAX_NICKNAME}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="e.g. chatgoblin"
+          className="rounded-full bg-secondary/70 pl-8 font-soft font-semibold"
+        />
+      </div>
     </div>
   );
 }
@@ -459,7 +490,6 @@ function DescriptionForm({
 
   return (
     <div className="space-y-4">
-      <NicknameField nickname={nickname} setNickname={setNickname} />
       <div className="space-y-1.5">
         <label htmlFor="lp-desc" className="font-soft text-sm font-bold text-muted-foreground">
           What is {displayName(mon.name)}? (max {MAX_DESCRIPTION} chars)
@@ -485,6 +515,8 @@ function DescriptionForm({
           </p>
         )}
       </div>
+
+      <NicknameField nickname={nickname} setNickname={setNickname} />
       {error && <p className="font-soft text-sm text-destructive">{error}</p>}
       <Button
         onClick={submit}
@@ -629,7 +661,6 @@ function ImageForm({
 
   return (
     <div className="space-y-4">
-      <NicknameField nickname={nickname} setNickname={setNickname} />
       <div className="space-y-2">
         {GIPHY_ENABLED ? (
           <div className="flex items-center justify-between gap-2">
@@ -725,6 +756,8 @@ function ImageForm({
           onChange={(e) => pick(e.target.files?.[0] ?? null)}
         />
       </div>
+
+      <NicknameField nickname={nickname} setNickname={setNickname} />
       {error && <p className="font-soft text-sm text-destructive">{error}</p>}
       <Button
         onClick={submit}
@@ -805,23 +838,20 @@ function ShareButton({ mon }: { mon: Mon }) {
   );
 }
 
-/** Horizontal bar comparing this species' spot count to the most-spotted one. */
+/** Slim one-row strip comparing this species' spots to the most-spotted one. */
 function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: number }) {
   const pct = Math.max(4, Math.round((spotted / maxSpotted) * 100));
   const isTop = spotted >= maxSpotted;
   return (
-    <div className="rounded-2xl border border-border bg-secondary/60 px-4 py-3">
-      <div className="mb-1.5 flex items-center justify-between font-soft text-xs font-bold">
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <Flame className="h-3.5 w-3.5 text-primary" aria-hidden />
-          DEX POPULARITY · {formatNumber(spotted)} spots
-        </span>
-        <span className={cn("flex items-center gap-1", isTop ? "text-pokedex-yellow" : "text-muted-foreground")}>
-          {isTop && <Crown className="h-3.5 w-3.5" aria-hidden />}
-          {isTop ? "top species!" : `${Math.round((spotted / maxSpotted) * 100)}% of top record`}
-        </span>
-      </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-white shadow-[inset_0_1px_3px_rgba(240,107,168,0.15)]">
+    <div
+      className="flex items-center gap-2.5 rounded-full border border-border bg-secondary/60 px-4 py-2"
+      aria-label="Popularity compared to the most spotted species"
+    >
+      <Flame className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+      <span className="font-soft shrink-0 text-[11px] font-bold text-muted-foreground">
+        {formatNumber(spotted)} {spotted === 1 ? "spot" : "spots"}
+      </span>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white shadow-[inset_0_1px_2px_rgba(240,107,168,0.2)]">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary to-[#b9a7f2] transition-[width] duration-700"
           style={{ width: `${pct}%` }}
@@ -832,6 +862,15 @@ function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: n
           aria-label="Popularity compared to the most spotted species"
         />
       </div>
+      <span
+        className={cn(
+          "font-soft flex shrink-0 items-center gap-1 text-[11px] font-bold",
+          isTop ? "text-pokedex-yellow" : "text-muted-foreground",
+        )}
+      >
+        {isTop && <Crown className="h-3.5 w-3.5" aria-hidden />}
+        {isTop ? "top species!" : `${Math.round((spotted / maxSpotted) * 100)}% of top`}
+      </span>
     </div>
   );
 }
