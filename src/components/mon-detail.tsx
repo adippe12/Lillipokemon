@@ -25,6 +25,7 @@ import { MonTypeChip } from "./mon-type-chip";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -69,24 +70,35 @@ export function MonDetailDialog({ mon, pendingCount, maxSpotted, onOpenChange }:
   return (
     <Dialog open={!!mon} onOpenChange={onOpenChange}>
       {mon && (
-        <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-3xl border-2 border-border bg-popover p-6 shadow-[0_24px_60px_rgba(240,107,168,0.22)] sm:max-w-xl">
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[min(88vh,640px)] w-full flex-col gap-0 overflow-hidden rounded-[1.75rem] border-2 border-border bg-popover p-0 shadow-[0_24px_60px_rgba(240,107,168,0.22)] sm:max-w-[560px]"
+        >
           <DialogHeader className="sr-only">
             <DialogTitle>{displayName(mon.name)} entry</DialogTitle>
             <DialogDescription>
               Details and research proposals for {displayName(mon.name)}.
             </DialogDescription>
           </DialogHeader>
-          <DetailBody mon={mon} pendingCount={pendingCount} maxSpotted={maxSpotted} onOpenChange={onOpenChange} />
+          <DetailBody key={mon.id} mon={mon} pendingCount={pendingCount} maxSpotted={maxSpotted} />
         </DialogContent>
       )}
     </Dialog>
   );
 }
 
-function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount: number; maxSpotted: number; onOpenChange: (o: boolean) => void }) {
+function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount: number; maxSpotted: number }) {
   // Full-size artwork viewer (lightbox) — object-cover crops the hero medallion,
   // so clicking it opens the uncropped original over a checkerboard.
   const [zoom, setZoom] = useState(false);
+  // Sheet layout: fixed hero + one tabbed body. The landing tab is chosen by
+  // what the entry is still missing (complete entries open on the dossier).
+  const [tab, setTab] = useState<"entry" | "improve">(() =>
+    mon.description && mon.image_path ? "entry" : "improve",
+  );
+  const [editKind, setEditKind] = useState<"description" | "image">(() =>
+    mon.description ? "image" : "description",
+  );
   // Dialog content mounts only after user interaction (post-hydration),
   // so a lazy initializer reading localStorage is hydration-safe.
   const [nickname, setNickname] = useState(() => {
@@ -101,126 +113,204 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
   }, [nickname]);
 
   return (
-    <div className="space-y-5">
-      {/* header — soft gradient hero card tinted with the mon's type color */}
-      <div className="relative overflow-hidden rounded-[1.4rem] border border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 p-4 shadow-[0_6px_18px_rgba(240,107,168,0.08)]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: `radial-gradient(260px 150px at 90% -10%, ${typeColor(mon.name)}2b, transparent)` }}
-        />
-        <div className="relative flex items-start gap-4">
+    <>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as "entry" | "improve")}
+        className="flex min-h-0 flex-1 flex-col gap-0"
+      >
+        {/* hero — fixed sheet header, tinted with the mon's type color */}
+        <div className="relative shrink-0 overflow-hidden border-b border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 px-5 pb-4 pt-5">
           <div
-            className={`floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px] ${
-              !mon.image_path ? "halo-dash halo-dash-spin" : ""
-            }`}
-            style={{
-              background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
-              borderColor: "rgba(255,255,255,0.9)",
-              boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
-            }}
-          >
-            {!mon.image_path && (
-              <span
-                className="pointer-events-none absolute inset-0 rounded-full opacity-60"
-                style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
-                aria-hidden
-              />
-            )}
-            {mon.image_path ? (
-              <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
-            ) : (
-              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
-            )}
-          </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[13px] font-bold text-muted-foreground">
-                {pokedexNumber(mon.pokedex_no)}
-              </span>
-              <h2 className="font-display truncate text-xl font-extrabold text-foreground">
-                {displayName(mon.name)}
-              </h2>
-              <MonTypeChip name={mon.name} />
-            </div>
-            <div className="flex flex-wrap gap-1.5 font-soft text-[12px] font-bold">
-              <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
-                <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
-              </Badge>
-              <Badge variant="secondary" className="gap-1 rounded-full border-border">
-                <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
-              </Badge>
-              <Badge variant="secondary" className="gap-1 rounded-full border-border">
-                <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
-              </Badge>
-              {!mon.image_path && (
-                <Badge variant="secondary" className="gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary">
-                  <ImageIcon className="h-3 w-3" aria-hidden /> art wanted
-                </Badge>
-              )}
-              {pendingCount > 0 && (
-                <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
-                  <FlaskConical className="h-3 w-3" /> {pendingCount} in review
-                </Badge>
-              )}
-            </div>
-            <p className="font-soft flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <span className="pulse-dot" aria-hidden />
-              last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
-            </p>
-          </div>
-          <ShareButton mon={mon} />
-        </div>
-      </div>
-
-      {/* artists-wanted nudge — turn the missing art into a call to action */}
-      {!mon.image_path && (
-        <div className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/5 px-4 py-3">
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-white shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
             aria-hidden
-          >
-            <ImageIcon className="h-4 w-4 text-primary" />
-          </span>
-          <div className="min-w-0">
-            <p className="font-soft text-[13px] font-bold text-foreground">
-              This mon is waiting for its official portrait!
-            </p>
-            <p className="font-soft text-xs font-semibold text-muted-foreground">
-              Artists of chat — use the <span className="font-bold text-primary">Submit art</span> tab below to
-              immortalize it.
-            </p>
+            className="pointer-events-none absolute inset-0"
+            style={{ background: `radial-gradient(260px 150px at 88% -12%, ${typeColor(mon.name)}2b, transparent)` }}
+          />
+          {/* floating action chips — share + close, app-style */}
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
+            <ShareButton mon={mon} />
+            <DialogClose
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white/90 text-muted-foreground shadow-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <X className="h-4 w-4" />
+            </DialogClose>
           </div>
+
+          <div className="relative flex items-start gap-4">
+            <div
+              className={`floaty relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border p-[3px] ${
+                !mon.image_path ? "halo-dash halo-dash-spin" : ""
+              }`}
+              style={{
+                background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
+                borderColor: "rgba(255,255,255,0.9)",
+                boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
+              }}
+            >
+              {!mon.image_path && (
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full opacity-60"
+                  style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
+                  aria-hidden
+                />
+              )}
+              {mon.image_path ? (
+                <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
+              ) : (
+                <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={70} className="relative" needsArt />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 pr-20 sm:pr-24">
+                <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[12px] font-bold text-muted-foreground">
+                  {pokedexNumber(mon.pokedex_no)}
+                </span>
+                <h2 className="font-display truncate text-lg font-extrabold text-foreground">
+                  {displayName(mon.name)}
+                </h2>
+                <MonTypeChip name={mon.name} />
+              </div>
+              <div className="flex flex-wrap gap-1.5 font-soft text-[11px] font-bold">
+                <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
+                  <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
+                </Badge>
+                <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                  <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
+                </Badge>
+                <Badge variant="secondary" className="gap-1 rounded-full border-border">
+                  <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
+                </Badge>
+                {!mon.image_path && (
+                  <Badge variant="secondary" className="gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary">
+                    <ImageIcon className="h-3 w-3" aria-hidden /> art wanted
+                  </Badge>
+                )}
+                {pendingCount > 0 && (
+                  <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
+                    <FlaskConical className="h-3 w-3" /> {pendingCount} in review
+                  </Badge>
+                )}
+              </div>
+              <p className="font-soft flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                <span className="pulse-dot" aria-hidden />
+                last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
+              </p>
+            </div>
+          </div>
+
+          {/* sheet tabs — Entry reads the dossier · Improve submits to it */}
+          <TabsList className="relative mt-4 grid w-full grid-cols-2 rounded-full border border-border/60 bg-white/70 p-1 shadow-[0_2px_8px_rgba(240,107,168,0.08)]">
+            <TabsTrigger value="entry" className="font-soft gap-1.5 rounded-full text-[13px] font-bold">
+              <BookOpen className="h-4 w-4" /> Entry
+            </TabsTrigger>
+            <TabsTrigger value="improve" className="font-soft gap-1.5 rounded-full text-[13px] font-bold">
+              <PenLine className="h-4 w-4" /> Improve
+              {(!mon.description || !mon.image_path) && (
+                <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+              )}
+            </TabsTrigger>
+          </TabsList>
         </div>
-      )}
 
-      {/* popularity vs top species */}
-      {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
+        {/* body — the only scrolling region inside the sheet */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* dossier */}
+          <TabsContent value="entry" className="mt-0 space-y-3 p-5 pb-6">
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
+              <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
+                &ldquo;
+              </span>
+              <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
+              </h3>
+              {mon.description ? (
+                <blockquote className="space-y-1.5">
+                  <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
+                  <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
+                    <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
+                  </footer>
+                </blockquote>
+              ) : (
+                <p className="text-sm leading-relaxed italic text-muted-foreground">
+                  No approved research yet — this creature&apos;s behaviour is undocumented. Open the{" "}
+                  <span className="font-bold not-italic text-primary">Improve</span> tab to be the first to describe it!
+                </p>
+              )}
+            </div>
 
-      {/* description */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
-        <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
-          &ldquo;
-        </span>
-        <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
-          <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
-        </h3>
-        {mon.description ? (
-          <blockquote className="space-y-1.5">
-            <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
-            <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
-              <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
-            </footer>
-          </blockquote>
-        ) : (
-          <p className="text-sm leading-relaxed italic text-muted-foreground">
-            No approved research yet — this creature&apos;s behaviour is undocumented. Be the first to describe it below!
-          </p>
-        )}
-      </div>
+            {/* popularity vs top species */}
+            {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
 
-      {/* proposal form */}
-      <ProposalSection mon={mon} nickname={nickname} setNickname={setNickname} />
+            {/* art-wanted CTA — one tap opens the art studio */}
+            {!mon.image_path && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("improve");
+                  setEditKind("image");
+                }}
+                className="group flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/5 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/10"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-white shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+                  aria-hidden
+                >
+                  <ImageIcon className="h-4 w-4 text-primary" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="font-soft block text-[13px] font-bold text-foreground">
+                    This mon is waiting for its official portrait!
+                  </span>
+                  <span className="font-soft block text-xs font-semibold text-muted-foreground">
+                    Artists of chat — immortalize it in the art studio.
+                  </span>
+                </span>
+                <PenLine className="h-4 w-4 shrink-0 text-primary transition group-hover:translate-x-0.5" aria-hidden />
+              </button>
+            )}
+          </TabsContent>
+
+          {/* proposal studio — the edit forms live inside the sheet now */}
+          <TabsContent value="improve" className="mt-0 space-y-3 p-5 pb-6">
+            <div
+              className="flex rounded-full border border-border/60 bg-secondary/70 p-1"
+              role="group"
+              aria-label="Choose what to submit"
+            >
+              <button
+                type="button"
+                onClick={() => setEditKind("description")}
+                aria-pressed={editKind === "description"}
+                className={`font-soft flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
+                  editKind === "description"
+                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <PenLine className="h-4 w-4" /> Describe it
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditKind("image")}
+                aria-pressed={editKind === "image"}
+                className={`font-soft flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
+                  editKind === "image"
+                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <ImageIcon className="h-4 w-4" /> Submit art
+              </button>
+            </div>
+            {editKind === "description" ? (
+              <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
+            ) : (
+              <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
+            )}
+          </TabsContent>
+        </div>
+      </Tabs>
 
       {/* full-size artwork lightbox — click the hero medallion to inspect the
           uncropped original (object-cover center-crops wide/tall art) */}
@@ -246,7 +336,7 @@ function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount:
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </>
   );
 }
 
@@ -277,68 +367,6 @@ function HeroArt({ path, name, onZoom }: { path: string; name: string; onZoom: (
   );
 }
 
-function ProposalSection({
-  mon,
-  nickname,
-  setNickname,
-}: {
-  mon: Mon;
-  nickname: string;
-  setNickname: (v: string) => void;
-}) {
-  // Completed entries (story + artwork both approved) collapse the whole
-  // proposal form into one discreet button so the entry stays clean; anything
-  // still missing keeps the form visible to nudge chat into filling the gap.
-  const [expanded, setExpanded] = useState(false);
-  const complete = Boolean(mon.description && mon.image_path);
-
-  if (complete && !expanded) {
-    return (
-      <div className="flex justify-center pt-0.5">
-        <button
-          onClick={() => setExpanded(true)}
-          className="font-soft flex items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.06)] transition hover:border-primary/40 hover:text-primary"
-          aria-label="Propose an improved description or new artwork"
-        >
-          <PenLine className="h-3.5 w-3.5" aria-hidden />
-          improve this entry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {complete && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => setExpanded(false)}
-            className="font-soft flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:text-primary"
-          >
-            <X className="h-3 w-3" aria-hidden />
-            hide form
-          </button>
-        </div>
-      )}
-      <Tabs defaultValue={mon.description ? "image" : "description"} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
-          <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
-            <PenLine className="h-4 w-4" /> Describe it
-          </TabsTrigger>
-          <TabsTrigger value="image" className="font-soft gap-1.5 rounded-full text-sm font-bold">
-            <ImageIcon className="h-4 w-4" /> Submit art
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="description" className="mt-4">
-          <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
-        </TabsContent>
-        <TabsContent value="image" className="mt-4">
-          <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
 
 function NicknameField({
   nickname,
@@ -759,7 +787,7 @@ function ShareButton({ mon }: { mon: Mon }) {
       variant="secondary"
       size="sm"
       onClick={copy}
-      className="font-soft shrink-0 gap-1.5 rounded-full border border-border px-3 font-bold"
+      className="font-soft h-8 shrink-0 gap-1.5 rounded-full border border-border bg-white/90 px-3 font-bold shadow-sm"
       aria-label={`Copy share link for ${displayName(mon.name)}`}
     >
       {copied ? (

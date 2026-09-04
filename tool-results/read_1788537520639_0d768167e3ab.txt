@@ -1,0 +1,815 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState } from "react";
+     4→import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
+     5→import { GIPHY_ENABLED, fetchGifAsFile, type GiphyGif } from "@/lib/giphy";
+     6→import { GiphyPicker } from "./giphy-picker";
+     7→import {
+     8→  type Mon,
+     9→  type Proposal,
+    10→  MAX_DESCRIPTION,
+    11→  MAX_NICKNAME,
+    12→  MAX_IMAGE_MB,
+    13→  ALLOWED_IMAGE_TYPES,
+    14→  displayName,
+    15→  pokedexNumber,
+    16→  formatDate,
+    17→  formatNumber,
+    18→  relativeTime,
+    19→  monTypeOf,
+    20→  passesQuickFilter,
+    21→  canonicalize,
+    22→} from "@/lib/mons";
+    23→import { MonSprite, spriteBubbleBg } from "./mon-sprite";
+    24→import { MonTypeChip } from "./mon-type-chip";
+    25→import { cn } from "@/lib/utils";
+    26→import {
+    27→  Dialog,
+    28→  DialogContent,
+    29→  DialogDescription,
+    30→  DialogHeader,
+    31→  DialogTitle,
+    32→} from "@/components/ui/dialog";
+    33→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    34→import { Button } from "@/components/ui/button";
+    35→import { Input } from "@/components/ui/input";
+    36→import { Textarea } from "@/components/ui/textarea";
+    37→import { Progress } from "@/components/ui/progress";
+    38→import { Badge } from "@/components/ui/badge";
+    39→import { Alert, AlertDescription } from "@/components/ui/alert";
+    40→import {
+    41→  AtSign,
+    42→  BookOpen,
+    43→  Calendar,
+    44→  Check,
+    45→  Crown,
+    46→  Flame,
+    47→  FlaskConical,
+    48→  Heart,
+    49→  ImageIcon,
+    50→  Link2,
+    51→  Loader2,
+    52→  PenLine,
+    53→  Search,
+    54→  ShieldCheck,
+    55→  Sparkles,
+    56→  UploadCloud,
+    57→  X,
+    58→  ZoomIn,
+    59→} from "lucide-react";
+    60→
+    61→type Props = {
+    62→  mon: Mon | null;
+    63→  pendingCount: number;
+    64→  maxSpotted: number;
+    65→  onOpenChange: (open: boolean) => void;
+    66→};
+    67→
+    68→export function MonDetailDialog({ mon, pendingCount, maxSpotted, onOpenChange }: Props) {
+    69→  return (
+    70→    <Dialog open={!!mon} onOpenChange={onOpenChange}>
+    71→      {mon && (
+    72→        <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-3xl border-2 border-border bg-popover p-6 shadow-[0_24px_60px_rgba(240,107,168,0.22)] sm:max-w-xl">
+    73→          <DialogHeader className="sr-only">
+    74→            <DialogTitle>{displayName(mon.name)} entry</DialogTitle>
+    75→            <DialogDescription>
+    76→              Details and research proposals for {displayName(mon.name)}.
+    77→            </DialogDescription>
+    78→          </DialogHeader>
+    79→          <DetailBody mon={mon} pendingCount={pendingCount} maxSpotted={maxSpotted} onOpenChange={onOpenChange} />
+    80→        </DialogContent>
+    81→      )}
+    82→    </Dialog>
+    83→  );
+    84→}
+    85→
+    86→function DetailBody({ mon, pendingCount, maxSpotted }: { mon: Mon; pendingCount: number; maxSpotted: number; onOpenChange: (o: boolean) => void }) {
+    87→  // Full-size artwork viewer (lightbox) — object-cover crops the hero medallion,
+    88→  // so clicking it opens the uncropped original over a checkerboard.
+    89→  const [zoom, setZoom] = useState(false);
+    90→  // Dialog content mounts only after user interaction (post-hydration),
+    91→  // so a lazy initializer reading localStorage is hydration-safe.
+    92→  const [nickname, setNickname] = useState(() => {
+    93→    try {
+    94→      return window.localStorage.getItem("lp_nick") ?? "";
+    95→    } catch {
+    96→      return "";
+    97→    }
+    98→  });
+    99→  useEffect(() => {
+   100→    if (nickname.trim()) localStorage.setItem("lp_nick", nickname.trim().slice(0, MAX_NICKNAME));
+   101→  }, [nickname]);
+   102→
+   103→  return (
+   104→    <div className="space-y-5">
+   105→      {/* header — soft gradient hero card tinted with the mon's type color */}
+   106→      <div className="relative overflow-hidden rounded-[1.4rem] border border-border/70 bg-gradient-to-br from-white via-white to-secondary/70 p-4 shadow-[0_6px_18px_rgba(240,107,168,0.08)]">
+   107→        <div
+   108→          aria-hidden
+   109→          className="pointer-events-none absolute inset-0"
+   110→          style={{ background: `radial-gradient(260px 150px at 90% -10%, ${typeColor(mon.name)}2b, transparent)` }}
+   111→        />
+   112→        <div className="relative flex items-start gap-4">
+   113→          <div
+   114→            className={`floaty relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border p-[3px] ${
+   115→              !mon.image_path ? "halo-dash halo-dash-spin" : ""
+   116→            }`}
+   117→            style={{
+   118→              background: spriteBubbleBg(mon.name, mon.id.slice(0, 8)),
+   119→              borderColor: "rgba(255,255,255,0.9)",
+   120→              boxShadow: "inset 0 -5px 12px rgba(240,107,168,0.10), 0 6px 16px rgba(240,107,168,0.12)",
+   121→            }}
+   122→          >
+   123→            {!mon.image_path && (
+   124→              <span
+   125→                className="pointer-events-none absolute inset-0 rounded-full opacity-60"
+   126→                style={{ background: `radial-gradient(80px 60px at 50% 45%, ${typeColor(mon.name)}18, transparent)` }}
+   127→                aria-hidden
+   128→              />
+   129→            )}
+   130→            {mon.image_path ? (
+   131→              <HeroArt path={mon.image_path} name={mon.name} onZoom={() => setZoom(true)} />
+   132→            ) : (
+   133→              <MonSprite name={mon.name} seed={mon.id.slice(0, 8)} size={100} className="relative" needsArt />
+   134→            )}
+   135→          </div>
+   136→          <div className="min-w-0 flex-1 space-y-2">
+   137→            <div className="flex flex-wrap items-center gap-2">
+   138→              <span className="font-soft rounded-full bg-secondary px-2 py-0.5 text-[13px] font-bold text-muted-foreground">
+   139→                {pokedexNumber(mon.pokedex_no)}
+   140→              </span>
+   141→              <h2 className="font-display truncate text-xl font-extrabold text-foreground">
+   142→                {displayName(mon.name)}
+   143→              </h2>
+   144→              <MonTypeChip name={mon.name} />
+   145→            </div>
+   146→            <div className="flex flex-wrap gap-1.5 font-soft text-[12px] font-bold">
+   147→              <Badge variant="secondary" className="gap-1 rounded-full border border-primary/25 bg-primary/10 text-primary">
+   148→                <Heart className="h-3 w-3" aria-hidden /> {formatNumber(mon.spotted_count)} spotted
+   149→              </Badge>
+   150→              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+   151→                <AtSign className="h-3 w-3" aria-hidden /> {mon.discovered_by}
+   152→              </Badge>
+   153→              <Badge variant="secondary" className="gap-1 rounded-full border-border">
+   154→                <Calendar className="h-3 w-3" aria-hidden /> {formatDate(mon.discovered_at)}
+   155→              </Badge>
+   156→              {!mon.image_path && (
+   157→                <Badge variant="secondary" className="gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary">
+   158→                  <ImageIcon className="h-3 w-3" aria-hidden /> art wanted
+   159→                </Badge>
+   160→              )}
+   161→              {pendingCount > 0 && (
+   162→                <Badge className="gap-1 rounded-full border border-pokedex-yellow/30 bg-pokedex-yellow/10 text-pokedex-yellow">
+   163→                  <FlaskConical className="h-3 w-3" /> {pendingCount} in review
+   164→                </Badge>
+   165→              )}
+   166→            </div>
+   167→            <p className="font-soft flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+   168→              <span className="pulse-dot" aria-hidden />
+   169→              last seen: {mon.last_spotted_by ? `@${mon.last_spotted_by}` : "?"} · {relativeTime(mon.last_spotted_at)}
+   170→            </p>
+   171→          </div>
+   172→          <ShareButton mon={mon} />
+   173→        </div>
+   174→      </div>
+   175→
+   176→      {/* artists-wanted nudge — turn the missing art into a call to action */}
+   177→      {!mon.image_path && (
+   178→        <div className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/5 px-4 py-3">
+   179→          <span
+   180→            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-white shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+   181→            aria-hidden
+   182→          >
+   183→            <ImageIcon className="h-4 w-4 text-primary" />
+   184→          </span>
+   185→          <div className="min-w-0">
+   186→            <p className="font-soft text-[13px] font-bold text-foreground">
+   187→              This mon is waiting for its official portrait!
+   188→            </p>
+   189→            <p className="font-soft text-xs font-semibold text-muted-foreground">
+   190→              Artists of chat — use the <span className="font-bold text-primary">Submit art</span> tab below to
+   191→              immortalize it.
+   192→            </p>
+   193→          </div>
+   194→        </div>
+   195→      )}
+   196→
+   197→      {/* popularity vs top species */}
+   198→      {maxSpotted > 0 && <PopularityBar spotted={mon.spotted_count} maxSpotted={maxSpotted} />}
+   199→
+   200→      {/* description */}
+   201→      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/80 via-white to-white p-4">
+   202→        <span aria-hidden className="font-display pointer-events-none absolute -top-2 right-3 select-none text-6xl leading-none text-primary/10">
+   203→          &ldquo;
+   204→        </span>
+   205→        <h3 className="font-soft mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+   206→          <BookOpen className="h-3.5 w-3.5 text-pokedex-cyan" aria-hidden /> Story
+   207→        </h3>
+   208→        {mon.description ? (
+   209→          <blockquote className="space-y-1.5">
+   210→            <p className="text-[15px] leading-relaxed text-foreground">&ldquo;{mon.description}&rdquo;</p>
+   211→            <footer className="font-soft inline-flex items-center gap-1 rounded-full border border-border bg-white/80 px-2 py-0.5 text-[11px] font-bold text-pokedex-cyan">
+   212→              <AtSign className="h-3 w-3" aria-hidden /> {mon.description_by}
+   213→            </footer>
+   214→          </blockquote>
+   215→        ) : (
+   216→          <p className="text-sm leading-relaxed italic text-muted-foreground">
+   217→            No approved research yet — this creature&apos;s behaviour is undocumented. Be the first to describe it below!
+   218→          </p>
+   219→        )}
+   220→      </div>
+   221→
+   222→      {/* proposal form */}
+   223→      <ProposalSection mon={mon} nickname={nickname} setNickname={setNickname} />
+   224→
+   225→      {/* full-size artwork lightbox — click the hero medallion to inspect the
+   226→          uncropped original (object-cover center-crops wide/tall art) */}
+   227→      {mon.image_path && (
+   228→        <Dialog open={zoom} onOpenChange={setZoom}>
+   229→          <DialogContent
+   230→            showCloseButton
+   231→            className="max-w-[min(92vw,860px)] rounded-3xl border-0 bg-transparent p-2 shadow-none focus:outline-none [&>button]:rounded-full [&>button]:border [&>button]:border-border [&>button]:bg-white/90 [&>button]:shadow-md"
+   232→            style={{ width: "min(92vw, 860px)" }}
+   233→          >
+   234→            <DialogHeader className="sr-only">
+   235→              <DialogTitle>{displayName(mon.name)} full artwork</DialogTitle>
+   236→              <DialogDescription>Uncropped view of the approved artwork.</DialogDescription>
+   237→            </DialogHeader>
+   238→            <img
+   239→              src={publicImageUrl(mon.image_path)}
+   240→              alt={`${mon.name} full artwork`}
+   241→              className="checker max-h-[78vh] w-full rounded-2xl object-contain"
+   242→            />
+   243→            <p className="font-soft text-center text-xs font-bold text-white/90 drop-shadow">
+   244→              {displayName(mon.name)} — official portrait
+   245→            </p>
+   246→          </DialogContent>
+   247→        </Dialog>
+   248→      )}
+   249→    </div>
+   250→  );
+   251→}
+   252→
+   253→/** Hero medallion artwork — click to open the full-size lightbox. */
+   254→function HeroArt({ path, name, onZoom }: { path: string; name: string; onZoom: () => void }) {
+   255→  return (
+   256→    <button
+   257→      type="button"
+   258→      onClick={onZoom}
+   259→      aria-label={`View full-size artwork of ${displayName(name)}`}
+   260→      title="View full size"
+   261→      className="group/art relative block h-full w-full cursor-zoom-in rounded-full focus-visible:outline-2"
+   262→    >
+   263→      <img
+   264→        src={publicImageUrl(path)}
+   265→        alt={`${name} approved artwork`}
+   266→        className="relative h-full w-full rounded-full object-cover"
+   267→      />
+   268→      <span
+   269→        aria-hidden
+   270→        className="absolute inset-0 flex items-center justify-center rounded-full bg-[#3a2b34]/0 opacity-0 transition group-hover/art:bg-[#3a2b34]/25 group-hover/art:opacity-100"
+   271→      >
+   272→        <span className="flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-md">
+   273→          <ZoomIn className="h-3 w-3" /> full size
+   274→        </span>
+   275→      </span>
+   276→    </button>
+   277→  );
+   278→}
+   279→
+   280→function ProposalSection({
+   281→  mon,
+   282→  nickname,
+   283→  setNickname,
+   284→}: {
+   285→  mon: Mon;
+   286→  nickname: string;
+   287→  setNickname: (v: string) => void;
+   288→}) {
+   289→  // Completed entries (story + artwork both approved) collapse the whole
+   290→  // proposal form into one discreet button so the entry stays clean; anything
+   291→  // still missing keeps the form visible to nudge chat into filling the gap.
+   292→  const [expanded, setExpanded] = useState(false);
+   293→  const complete = Boolean(mon.description && mon.image_path);
+   294→
+   295→  if (complete && !expanded) {
+   296→    return (
+   297→      <div className="flex justify-center pt-0.5">
+   298→        <button
+   299→          onClick={() => setExpanded(true)}
+   300→          className="font-soft flex items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-[0_2px_8px_rgba(240,107,168,0.06)] transition hover:border-primary/40 hover:text-primary"
+   301→          aria-label="Propose an improved description or new artwork"
+   302→        >
+   303→          <PenLine className="h-3.5 w-3.5" aria-hidden />
+   304→          improve this entry
+   305→        </button>
+   306→      </div>
+   307→    );
+   308→  }
+   309→
+   310→  return (
+   311→    <div className="space-y-3">
+   312→      {complete && (
+   313→        <div className="flex justify-end">
+   314→          <button
+   315→            onClick={() => setExpanded(false)}
+   316→            className="font-soft flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:text-primary"
+   317→          >
+   318→            <X className="h-3 w-3" aria-hidden />
+   319→            hide form
+   320→          </button>
+   321→        </div>
+   322→      )}
+   323→      <Tabs defaultValue={mon.description ? "image" : "description"} className="w-full">
+   324→        <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
+   325→          <TabsTrigger value="description" className="font-soft gap-1.5 rounded-full text-sm font-bold">
+   326→            <PenLine className="h-4 w-4" /> Describe it
+   327→          </TabsTrigger>
+   328→          <TabsTrigger value="image" className="font-soft gap-1.5 rounded-full text-sm font-bold">
+   329→            <ImageIcon className="h-4 w-4" /> Submit art
+   330→          </TabsTrigger>
+   331→        </TabsList>
+   332→        <TabsContent value="description" className="mt-4">
+   333→          <DescriptionForm mon={mon} nickname={nickname} setNickname={setNickname} />
+   334→        </TabsContent>
+   335→        <TabsContent value="image" className="mt-4">
+   336→          <ImageForm mon={mon} nickname={nickname} setNickname={setNickname} />
+   337→        </TabsContent>
+   338→      </Tabs>
+   339→    </div>
+   340→  );
+   341→}
+   342→
+   343→function NicknameField({
+   344→  nickname,
+   345→  setNickname,
+   346→}: {
+   347→  nickname: string;
+   348→  setNickname: (v: string) => void;
+   349→}) {
+   350→  return (
+   351→    <div className="space-y-1.5">
+   352→      <label htmlFor="lp-nick" className="font-soft text-sm font-bold text-muted-foreground">
+   353→        Your name (shown as credit after approval)
+   354→      </label>
+   355→      <Input
+   356→        id="lp-nick"
+   357→        value={nickname}
+   358→        maxLength={MAX_NICKNAME}
+   359→        onChange={(e) => setNickname(e.target.value)}
+   360→        placeholder="e.g. chatgoblin"
+   361→        className="rounded-full bg-secondary/70 font-soft font-semibold"
+   362→      />
+   363→    </div>
+   364→  );
+   365→}
+   366→
+   367→function DescriptionForm({
+   368→  mon,
+   369→  nickname,
+   370→  setNickname,
+   371→}: {
+   372→  mon: Mon;
+   373→  nickname: string;
+   374→  setNickname: (v: string) => void;
+   375→}) {
+   376→  const [text, setText] = useState("");
+   377→  const [state, setState] = useState<"idle" | "sending" | "done">("idle");
+   378→  const [error, setError] = useState<string | null>(null);
+   379→
+   380→  const clean = passesQuickFilter(text);
+   381→  const tooShort = text.trim().length < 12;
+   382→
+   383→  async function submit() {
+   384→    setError(null);
+   385→    if (!supabaseConfigured) {
+   386→      setError("Connection unavailable — try again soon.");
+   387→      return;
+   388→    }
+   389→    if (!clean) {
+   390→      setError("Your text didn't pass the safety filter — please rephrase.");
+   391→      return;
+   392→    }
+   393→    setState("sending");
+   394→    try {
+   395→      const { error: err } = await supabase.from("proposals").insert({
+   396→        mon_id: mon.id,
+   397→        kind: "description",
+   398→        content: text.trim().slice(0, 500),
+   399→        submitted_by: canonicalize(nickname) || "anonymous",
+   400→      });
+   401→      if (err) {
+   402→        const msg = /safety filter/i.test(err.message)
+   403→          ? "Blocked by the safety filter — please rephrase kindly."
+   404→          : err.message;
+   405→        setError(msg);
+   406→        setState("idle");
+   407→        return;
+   408→      }
+   409→      setState("done");
+   410→    } catch {
+   411→      setError("Network hiccup — try again.");
+   412→      setState("idle");
+   413→    }
+   414→  }
+   415→
+   416→  if (state === "done") {
+   417→    return (
+   418→      <div className="space-y-3">
+   419→        <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
+   420→          <ShieldCheck className="h-4 w-4 text-pokedex-cyan" />
+   421→          <AlertDescription className="font-soft text-sm">
+   422→            Submitted! The channel team reviews every entry before it appears — thanks, researcher.
+   423→          </AlertDescription>
+   424→        </Alert>
+   425→        <Button variant="secondary" className="font-soft rounded-full font-bold" onClick={() => setState("idle")}>
+   426→          Propose another
+   427→        </Button>
+   428→      </div>
+   429→    );
+   430→  }
+   431→
+   432→  return (
+   433→    <div className="space-y-4">
+   434→      <NicknameField nickname={nickname} setNickname={setNickname} />
+   435→      <div className="space-y-1.5">
+   436→        <label htmlFor="lp-desc" className="font-soft text-sm font-bold text-muted-foreground">
+   437→          What is {displayName(mon.name)}? (max {MAX_DESCRIPTION} chars)
+   438→        </label>
+   439→        <Textarea
+   440→          id="lp-desc"
+   441→          value={text}
+   442→          maxLength={MAX_DESCRIPTION}
+   443→          onChange={(e) => setText(e.target.value)}
+   444→          placeholder="A gremlin of pure chaos that only appears when someone drops a combo..."
+   445→          rows={4}
+   446→          className="resize-none rounded-2xl bg-secondary/70 font-semibold"
+   447→        />
+   448→        <div className="flex items-center gap-3">
+   449→          <Progress value={(text.length / MAX_DESCRIPTION) * 100} className="h-1.5" />
+   450→          <span className="font-soft shrink-0 text-xs text-muted-foreground">
+   451→            {text.length}/{MAX_DESCRIPTION}
+   452→          </span>
+   453→        </div>
+   454→        {!clean && (
+   455→          <p className="font-soft text-xs text-destructive">
+   456→            That wording will be blocked by the safety filter — please rephrase kindly.
+   457→          </p>
+   458→        )}
+   459→      </div>
+   460→      {error && <p className="font-soft text-sm text-destructive">{error}</p>}
+   461→      <Button
+   462→        onClick={submit}
+   463→        disabled={state === "sending" || tooShort || !clean}
+   464→        className="font-display w-full rounded-full text-sm font-bold shadow-[0_6px_18px_rgba(240,107,168,0.35)] hover:bg-pokedex-dark-red"
+   465→      >
+   466→        {state === "sending" ? (
+   467→          <>
+   468→            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…
+   469→          </>
+   470→        ) : (
+   471→          <>
+   472→            <Sparkles className="mr-2 h-4 w-4" /> Submit for review
+   473→          </>
+   474→        )}
+   475→      </Button>
+   476→      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   477→        <ShieldCheck className="h-3.5 w-3.5 text-pokedex-cyan" />
+   478→        Safety: filtered for bad words + human-approved by the channel team before publishing.
+   479→      </p>
+   480→    </div>
+   481→  );
+   482→}
+   483→
+   484→function ImageForm({
+   485→  mon,
+   486→  nickname,
+   487→  setNickname,
+   488→}: {
+   489→  mon: Mon;
+   490→  nickname: string;
+   491→  setNickname: (v: string) => void;
+   492→}) {
+   493→  const [file, setFile] = useState<File | null>(null);
+   494→  const [preview, setPreview] = useState<string | null>(null);
+   495→  // Artwork source: a hand-picked file, or one found via the GIPHY picker.
+   496→  // The GIPHY option only renders when a free API key is configured.
+   497→  const [source, setSource] = useState<"upload" | "giphy">("upload");
+   498→  const [gifPick, setGifPick] = useState<GiphyGif | null>(null);
+   499→  const [state, setState] = useState<"idle" | "sending" | "done">("idle");
+   500→  const [progressMsg, setProgressMsg] = useState("");
+   501→  const [error, setError] = useState<string | null>(null);
+   502→  const inputRef = useRef<HTMLInputElement>(null);
+   503→
+   504→  function pick(f: File | null) {
+   505→    setError(null);
+   506→    setFile(null);
+   507→    setPreview(null);
+   508→    if (!f) return;
+   509→    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+   510→      setError("Only PNG, JPEG, WebP or GIF allowed.");
+   511→      return;
+   512→    }
+   513→    if (f.size > MAX_IMAGE_MB * 1024 * 1024) {
+   514→      setError(`Image too big — max ${MAX_IMAGE_MB}MB.`);
+   515→      return;
+   516→    }
+   517→    setFile(f);
+   518→    setPreview(URL.createObjectURL(f));
+   519→  }
+   520→
+   521→  async function submit() {
+   522→    setError(null);
+   523→    if (!supabaseConfigured) return;
+   524→    if (source === "upload" && !file) return;
+   525→    if (source === "giphy" && !gifPick) return;
+   526→    setState("sending");
+   527→    try {
+   528→      let uploadFile: File;
+   529→      if (source === "giphy" && gifPick) {
+   530→        setProgressMsg("Fetching GIF from GIPHY…");
+   531→        // Download the GIF into our own storage bucket — the dex never hotlinks
+   532→        // GIPHY, so approval + hosting + rendering stay exactly the same.
+   533→        uploadFile = await fetchGifAsFile(gifPick, mon.name);
+   534→      } else if (file) {
+   535→        uploadFile = file;
+   536→      } else {
+   537→        setState("idle");
+   538→        return;
+   539→      }
+   540→
+   541→      setProgressMsg("Uploading…");
+   542→      const ext =
+   543→        uploadFile.type === "image/png"
+   544→          ? "png"
+   545→          : uploadFile.type === "image/webp"
+   546→            ? "webp"
+   547→            : uploadFile.type === "image/gif"
+   548→              ? "gif"
+   549→              : "jpg";
+   550→      const path = `pending/${mon.name}/${crypto.randomUUID()}.${ext}`;
+   551→      const { error: upErr } = await supabase.storage
+   552→        .from(MON_IMAGES_BUCKET)
+   553→        .upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: "3600" });
+   554→      if (upErr) {
+   555→        setError(`Upload failed: ${upErr.message}`);
+   556→        setState("idle");
+   557→        return;
+   558→      }
+   559→
+   560→      setProgressMsg("Registering proposal…");
+   561→      const { error: dbErr } = await supabase.from("proposals").insert({
+   562→        mon_id: mon.id,
+   563→        kind: "image",
+   564→        content: path,
+   565→        submitted_by: canonicalize(nickname) || "anonymous",
+   566→      });
+   567→      if (dbErr) {
+   568→        await supabase.storage.from(MON_IMAGES_BUCKET).remove([path]);
+   569→        setError(
+   570→          /safety filter/i.test(dbErr.message)
+   571→            ? "Blocked by the safety filter."
+   572→            : `Could not register: ${dbErr.message}`
+   573→        );
+   574→        setState("idle");
+   575→        return;
+   576→      }
+   577→      setState("done");
+   578→    } catch (e) {
+   579→      setError(e instanceof Error ? e.message : "Network hiccup — try again.");
+   580→      setState("idle");
+   581→    } finally {
+   582→      setProgressMsg("");
+   583→    }
+   584→  }
+   585→
+   586→  if (state === "done") {
+   587→    return (
+   588→      <div className="space-y-3">
+   589→        <Alert className="border-pokedex-cyan/40 bg-pokedex-cyan/10">
+   590→          <ShieldCheck className="h-4 w-4 text-pokedex-cyan" />
+   591→          <AlertDescription className="font-soft text-sm">
+   592→            Artwork uploaded! It goes live after the channel team approves it.
+   593→          </AlertDescription>
+   594→        </Alert>
+   595→        <Button variant="secondary" className="font-soft rounded-full font-bold" onClick={() => setState("idle")}>
+   596→          Submit another
+   597→        </Button>
+   598→      </div>
+   599→    );
+   600→  }
+   601→
+   602→  return (
+   603→    <div className="space-y-4">
+   604→      <NicknameField nickname={nickname} setNickname={setNickname} />
+   605→      <div className="space-y-2">
+   606→        {GIPHY_ENABLED ? (
+   607→          <div className="flex items-center justify-between gap-2">
+   608→            <label className="font-soft text-sm font-bold text-muted-foreground">Artwork</label>
+   609→            <div className="flex rounded-full bg-secondary p-1" role="group" aria-label="Artwork source">
+   610→              <button
+   611→                type="button"
+   612→                onClick={() => {
+   613→                  setSource("upload");
+   614→                  setGifPick(null);
+   615→                }}
+   616→                aria-pressed={source === "upload"}
+   617→                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
+   618→                  source === "upload"
+   619→                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+   620→                    : "text-muted-foreground hover:text-primary"
+   621→                }`}
+   622→              >
+   623→                <UploadCloud className="h-3.5 w-3.5" /> Upload
+   624→              </button>
+   625→              <button
+   626→                type="button"
+   627→                onClick={() => {
+   628→                  setSource("giphy");
+   629→                  pick(null);
+   630→                }}
+   631→                aria-pressed={source === "giphy"}
+   632→                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
+   633→                  source === "giphy"
+   634→                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+   635→                    : "text-muted-foreground hover:text-primary"
+   636→                }`}
+   637→              >
+   638→                <Search className="h-3.5 w-3.5" /> GIPHY
+   639→              </button>
+   640→            </div>
+   641→          </div>
+   642→        ) : (
+   643→          <label className="font-soft text-sm font-bold text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
+   644→        )}
+   645→        {source === "upload" ? (
+   646→          <>
+   647→            {preview ? (
+   648→              <div className="relative flex items-center justify-center rounded-2xl border border-border bg-secondary/60 p-6">
+   649→                <img src={preview} alt="Selected artwork preview" className="max-h-48 rounded-lg object-contain" />
+   650→                <button
+   651→                  aria-label="Remove selected image"
+   652→                  onClick={() => pick(null)}
+   653→                  className="absolute right-2 top-2 rounded-full bg-foreground/20 p-1.5 text-foreground transition hover:bg-foreground/35"
+   654→                >
+   655→                  <X className="h-4 w-4" />
+   656→                </button>
+   657→              </div>
+   658→            ) : (
+   659→              <button
+   660→                type="button"
+   661→                onClick={() => inputRef.current?.click()}
+   662→                className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-secondary/50 p-8 transition hover:border-primary/50 hover:bg-secondary"
+   663→              >
+   664→                <UploadCloud className="h-8 w-8 text-primary" />
+   665→                <span className="font-soft text-sm font-semibold text-muted-foreground">Click to choose an image</span>
+   666→              </button>
+   667→            )}
+   668→          </>
+   669→        ) : gifPick ? (
+   670→          <div className="relative flex items-center justify-center rounded-2xl border border-border bg-secondary/60 p-6">
+   671→            <img
+   672→              src={gifPick.thumbAnim}
+   673→              alt={gifPick.title ? `Selected GIF: ${gifPick.title}` : "Selected GIF"}
+   674→              className="max-h-48 rounded-lg object-contain"
+   675→            />
+   676→            <button
+   677→              aria-label="Remove selected GIF"
+   678→              onClick={() => setGifPick(null)}
+   679→              className="absolute right-2 top-2 rounded-full bg-foreground/20 p-1.5 text-foreground transition hover:bg-foreground/35"
+   680→            >
+   681→              <X className="h-4 w-4" />
+   682→            </button>
+   683→          </div>
+   684→        ) : (
+   685→          <GiphyPicker onPick={(g) => setGifPick(g)} />
+   686→        )}
+   687→        {source === "giphy" && (
+   688→          <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+   689→            The GIF is copied into the private review queue — the channel team still approves it before it goes live.
+   690→          </p>
+   691→        )}
+   692→        <input
+   693→          ref={inputRef}
+   694→          type="file"
+   695→          accept={ALLOWED_IMAGE_TYPES.join(",")}
+   696→          className="hidden"
+   697→          onChange={(e) => pick(e.target.files?.[0] ?? null)}
+   698→        />
+   699→      </div>
+   700→      {error && <p className="font-soft text-sm text-destructive">{error}</p>}
+   701→      <Button
+   702→        onClick={submit}
+   703→        disabled={state === "sending" || (source === "upload" ? !file : !gifPick)}
+   704→        className="font-display w-full rounded-full text-sm font-bold shadow-[0_6px_18px_rgba(240,107,168,0.35)] hover:bg-pokedex-dark-red"
+   705→      >
+   706→        {state === "sending" ? (
+   707→          <>
+   708→            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {progressMsg || "Sending…"}
+   709→          </>
+   710→        ) : (
+   711→          <>
+   712→            <UploadCloud className="mr-2 h-4 w-4" /> Upload for review
+   713→          </>
+   714→        )}
+   715→      </Button>
+   716→      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   717→        <ShieldCheck className="h-3.5 w-3.5 text-pokedex-cyan" />
+   718→        Safety: images sit in a private review queue and are never public until approved.
+   719→      </p>
+   720→    </div>
+   721→  );
+   722→}
+   723→
+   724→/** Copy-to-clipboard share button producing a #mon-<name> deep link. */
+   725→function ShareButton({ mon }: { mon: Mon }) {
+   726→  const [copied, setCopied] = useState(false);
+   727→  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+   728→
+   729→  useEffect(() => () => {
+   730→    if (timer.current) clearTimeout(timer.current);
+   731→  }, []);
+   732→
+   733→  async function copy() {
+   734→    const url = `${window.location.origin}/#mon-${mon.name}`;
+   735→    try {
+   736→      await navigator.clipboard.writeText(url);
+   737→    } catch {
+   738→      // clipboard API can be unavailable (http / older browsers)
+   739→      const ta = document.createElement("textarea");
+   740→      ta.value = url;
+   741→      ta.style.position = "fixed";
+   742→      ta.style.opacity = "0";
+   743→      document.body.appendChild(ta);
+   744→      ta.select();
+   745→      try {
+   746→        document.execCommand("copy");
+   747→      } catch {
+   748→        /* give up silently */
+   749→      }
+   750→      ta.remove();
+   751→    }
+   752→    setCopied(true);
+   753→    if (timer.current) clearTimeout(timer.current);
+   754→    timer.current = setTimeout(() => setCopied(false), 2000);
+   755→  }
+   756→
+   757→  return (
+   758→    <Button
+   759→      variant="secondary"
+   760→      size="sm"
+   761→      onClick={copy}
+   762→      className="font-soft shrink-0 gap-1.5 rounded-full border border-border px-3 font-bold"
+   763→      aria-label={`Copy share link for ${displayName(mon.name)}`}
+   764→    >
+   765→      {copied ? (
+   766→        <>
+   767→          <Check className="h-3.5 w-3.5 text-pokedex-cyan" />
+   768→          <span className="hidden sm:inline text-pokedex-cyan">COPIED!</span>
+   769→        </>
+   770→      ) : (
+   771→        <>
+   772→          <Link2 className="h-3.5 w-3.5" />
+   773→          <span className="hidden sm:inline">Share</span>
+   774→        </>
+   775→      )}
+   776→    </Button>
+   777→  );
+   778→}
+   779→
+   780→/** Horizontal bar comparing this species' spot count to the most-spotted one. */
+   781→function PopularityBar({ spotted, maxSpotted }: { spotted: number; maxSpotted: number }) {
+   782→  const pct = Math.max(4, Math.round((spotted / maxSpotted) * 100));
+   783→  const isTop = spotted >= maxSpotted;
+   784→  return (
+   785→    <div className="rounded-2xl border border-border bg-secondary/60 px-4 py-3">
+   786→      <div className="mb-1.5 flex items-center justify-between font-soft text-xs font-bold">
+   787→        <span className="flex items-center gap-1 text-muted-foreground">
+   788→          <Flame className="h-3.5 w-3.5 text-primary" aria-hidden />
+   789→          DEX POPULARITY · {formatNumber(spotted)} spots
+   790→        </span>
+   791→        <span className={cn("flex items-center gap-1", isTop ? "text-pokedex-yellow" : "text-muted-foreground")}>
+   792→          {isTop && <Crown className="h-3.5 w-3.5" aria-hidden />}
+   793→          {isTop ? "top species!" : `${Math.round((spotted / maxSpotted) * 100)}% of top record`}
+   794→        </span>
+   795→      </div>
+   796→      <div className="h-2.5 overflow-hidden rounded-full bg-white shadow-[inset_0_1px_3px_rgba(240,107,168,0.15)]">
+   797→        <div
+   798→          className="h-full rounded-full bg-gradient-to-r from-primary to-[#b9a7f2] transition-[width] duration-700"
+   799→          style={{ width: `${pct}%` }}
+   800→          role="meter"
+   801→          aria-valuenow={spotted}
+   802→          aria-valuemin={0}
+   803→          aria-valuemax={maxSpotted}
+   804→          aria-label="Popularity compared to the most spotted species"
+   805→        />
+   806→      </div>
+   807→    </div>
+   808→  );
+   809→}
+   810→
+   811→/** Same palette as MonTypeChip, for glow accents around the sprite. */
+   812→function typeColor(name: string): string {
+   813→  return monTypeOf(name).color;
+   814→}
+   815→
