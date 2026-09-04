@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase, publicImageUrl, supabaseConfigured, MON_IMAGES_BUCKET } from "@/lib/supabase";
+import { GIPHY_ENABLED, fetchGifAsFile, type GiphyGif } from "@/lib/giphy";
+import { GiphyPicker } from "./giphy-picker";
 import {
   type Mon,
   type Proposal,
@@ -41,6 +43,7 @@ import {
   Link2,
   Loader2,
   PenLine,
+  Search,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -383,6 +386,10 @@ function ImageForm({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  // Artwork source: a hand-picked file, or one found via the GIPHY picker.
+  // The GIPHY option only renders when a free API key is configured.
+  const [source, setSource] = useState<"upload" | "giphy">("upload");
+  const [gifPick, setGifPick] = useState<GiphyGif | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const [progressMsg, setProgressMsg] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -407,15 +414,37 @@ function ImageForm({
 
   async function submit() {
     setError(null);
-    if (!supabaseConfigured || !file) return;
+    if (!supabaseConfigured) return;
+    if (source === "upload" && !file) return;
+    if (source === "giphy" && !gifPick) return;
     setState("sending");
     try {
+      let uploadFile: File;
+      if (source === "giphy" && gifPick) {
+        setProgressMsg("Fetching GIF from GIPHY…");
+        // Download the GIF into our own storage bucket — the dex never hotlinks
+        // GIPHY, so approval + hosting + rendering stay exactly the same.
+        uploadFile = await fetchGifAsFile(gifPick, mon.name);
+      } else if (file) {
+        uploadFile = file;
+      } else {
+        setState("idle");
+        return;
+      }
+
       setProgressMsg("Uploading…");
-      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : file.type === "image/gif" ? "gif" : "jpg";
+      const ext =
+        uploadFile.type === "image/png"
+          ? "png"
+          : uploadFile.type === "image/webp"
+            ? "webp"
+            : uploadFile.type === "image/gif"
+              ? "gif"
+              : "jpg";
       const path = `pending/${mon.name}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from(MON_IMAGES_BUCKET)
-        .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+        .upload(path, uploadFile, { contentType: uploadFile.type, cacheControl: "3600" });
       if (upErr) {
         setError(`Upload failed: ${upErr.message}`);
         setState("idle");
@@ -440,8 +469,8 @@ function ImageForm({
         return;
       }
       setState("done");
-    } catch {
-      setError("Network hiccup — try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network hiccup — try again.");
       setState("idle");
     } finally {
       setProgressMsg("");
@@ -468,27 +497,91 @@ function ImageForm({
     <div className="space-y-4">
       <NicknameField nickname={nickname} setNickname={setNickname} />
       <div className="space-y-2">
-        <label className="font-soft text-sm font-bold text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
-        {preview ? (
+        {GIPHY_ENABLED ? (
+          <div className="flex items-center justify-between gap-2">
+            <label className="font-soft text-sm font-bold text-muted-foreground">Artwork</label>
+            <div className="flex rounded-full bg-secondary p-1" role="group" aria-label="Artwork source">
+              <button
+                type="button"
+                onClick={() => {
+                  setSource("upload");
+                  setGifPick(null);
+                }}
+                aria-pressed={source === "upload"}
+                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
+                  source === "upload"
+                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <UploadCloud className="h-3.5 w-3.5" /> Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSource("giphy");
+                  pick(null);
+                }}
+                aria-pressed={source === "giphy"}
+                className={`font-soft flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
+                  source === "giphy"
+                    ? "bg-white text-primary shadow-[0_2px_8px_rgba(240,107,168,0.15)]"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <Search className="h-3.5 w-3.5" /> GIPHY
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="font-soft text-sm font-bold text-muted-foreground">Artwork (PNG/JPEG/WebP/GIF, max {MAX_IMAGE_MB}MB)</label>
+        )}
+        {source === "upload" ? (
+          <>
+            {preview ? (
+              <div className="relative flex items-center justify-center rounded-2xl border border-border bg-secondary/60 p-6">
+                <img src={preview} alt="Selected artwork preview" className="max-h-48 rounded-lg object-contain" />
+                <button
+                  aria-label="Remove selected image"
+                  onClick={() => pick(null)}
+                  className="absolute right-2 top-2 rounded-full bg-foreground/20 p-1.5 text-foreground transition hover:bg-foreground/35"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-secondary/50 p-8 transition hover:border-primary/50 hover:bg-secondary"
+              >
+                <UploadCloud className="h-8 w-8 text-primary" />
+                <span className="font-soft text-sm font-semibold text-muted-foreground">Click to choose an image</span>
+              </button>
+            )}
+          </>
+        ) : gifPick ? (
           <div className="relative flex items-center justify-center rounded-2xl border border-border bg-secondary/60 p-6">
-            <img src={preview} alt="Selected artwork preview" className="max-h-48 rounded-lg object-contain" />
+            <img
+              src={gifPick.thumbAnim}
+              alt={gifPick.title ? `Selected GIF: ${gifPick.title}` : "Selected GIF"}
+              className="max-h-48 rounded-lg object-contain"
+            />
             <button
-              aria-label="Remove selected image"
-              onClick={() => pick(null)}
+              aria-label="Remove selected GIF"
+              onClick={() => setGifPick(null)}
               className="absolute right-2 top-2 rounded-full bg-foreground/20 p-1.5 text-foreground transition hover:bg-foreground/35"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-secondary/50 p-8 transition hover:border-primary/50 hover:bg-secondary"
-          >
-            <UploadCloud className="h-8 w-8 text-primary" />
-            <span className="font-soft text-sm font-semibold text-muted-foreground">Click to choose an image</span>
-          </button>
+          <GiphyPicker onPick={(g) => setGifPick(g)} />
+        )}
+        {source === "giphy" && (
+          <p className="font-soft text-[11px] leading-snug text-muted-foreground">
+            The GIF is copied into the private review queue — the channel team still approves it before it goes live.
+          </p>
         )}
         <input
           ref={inputRef}
@@ -501,7 +594,7 @@ function ImageForm({
       {error && <p className="font-soft text-sm text-destructive">{error}</p>}
       <Button
         onClick={submit}
-        disabled={state === "sending" || !file}
+        disabled={state === "sending" || (source === "upload" ? !file : !gifPick)}
         className="font-display w-full rounded-full text-sm font-bold shadow-[0_6px_18px_rgba(240,107,168,0.35)] hover:bg-pokedex-dark-red"
       >
         {state === "sending" ? (
